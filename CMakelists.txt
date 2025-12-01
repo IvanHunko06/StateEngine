@@ -1,0 +1,14 @@
+cmake_minimum_required(VERSION 3.20)
+
+project(StateEngine LANGUAGES CXX)
+option(ENGINE_BUILD_DESKTOP_PLATFORM_MODULE "Build DesktopPlatformModule" ON)
+option(ENGINE_BUILD_VULKAN_RENDER_MODULE "Build VulkanRenderModule" ON)
+
+
+add_subdirectory(EngineCore)
+if(ENGINE_BUILD_DESKTOP_PLATFORM_MODULE)
+	add_subdirectory(Modules/DesktopPlatformModule)
+endif()
+if(ENGINE_BUILD_VULKAN_RENDER_MODULE)
+	add_subdirectory(Modules/VulkanRenderModule)
+endif()

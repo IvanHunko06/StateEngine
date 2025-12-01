@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.20)
+project(VulkanRenderModule VERSION 1.0.0 LANGUAGES CXX)
+include(../../cmake/CompilerSettings.cmake)
+include(../../cmake/CPM.cmake)
+
+file(GLOB_RECURSE SOURCES_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE HEADER_FILES     
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
+)
+CPMAddPackage(
+    NAME Vulkan-Headers
+    GIT_REPOSITORY "https://github.com/KhronosGroup/Vulkan-Headers"
+    GIT_TAG "v1.4.332"
+    VERSION 1.4.332
+)
+CPMAddPackage(
+    NAME volk
+    GIT_REPOSITORY "https://github.com/zeux/volk"
+    GIT_TAG "vulkan-sdk-1.4.328.1"
+    VERSION 1.4.328.1
+)
+
+
+add_library(VulkanRenderModule SHARED ${SOURCES_FILES} ${HEADER_FILES})
+target_sources(VulkanRenderModule PRIVATE ${HEADER_FILES})
+target_include_directories(VulkanRenderModule 
+    PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+target_link_libraries(VulkanRenderModule PRIVATE StateEngineCore)
+target_link_libraries(VulkanRenderModule PRIVATE Vulkan-Headers volk )
+target_compile_definitions(VulkanRenderModule PRIVATE VULKAN_RENDER_MODULE_EXPORTS)

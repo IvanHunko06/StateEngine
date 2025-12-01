@@ -1,0 +1,48 @@
+cmake_minimum_required(VERSION 3.20)
+project(StateEngineCore VERSION 1.0.0 LANGUAGES CXX)
+set(STATE_ENGINE_CORE_USE_MIMALLOC OFF CACHE BOOL "Use mimalloc allocator")
+set(STATE_ENGINE_CORE_USE_STL_DATA_STRUCTURES OFF CACHE BOOL "Use stl data structures")
+
+include(../cmake/CompilerSettings.cmake)
+include(../cmake/CPM.cmake)
+
+file(GLOB_RECURSE SOURCES_FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE HEADER_FILES     
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
+)
+add_library(StateEngineCore SHARED ${SOURCES_FILES} ${HEADER_FILES})
+target_sources(StateEngineCore PRIVATE ${HEADER_FILES})
+if(STATE_ENGINE_CORE_USE_MIMALLOC)
+    CPMAddPackage(
+        NAME mimalloc
+        GIT_REPOSITORY "https://github.com/microsoft/mimalloc"
+        VERSION 3.0.10
+        GIT_TAG "v3.0.10"
+        OPTIONS
+            "MI_BUILD_SHARED OFF"
+            "MI_BUILD_STATIC ON"
+            "MI_BUILD_TESTS OFF"
+            "MI_BUILD_OBJECT OFF"
+            "MI_SECURE OFF"
+            "MI_OVERRIDE OFF"
+    )
+    target_link_libraries(StateEngineCore PRIVATE mimalloc-static)
+    target_compile_definitions(StateEngineCore PRIVATE USE_MIMALLOC_ALLOCATOR)
+endif()
+if(STATE_ENGINE_CORE_USE_STL_DATA_STRUCTURES)
+    target_compile_definitions(StateEngineCore PUBLIC USE_STL_STRUCTURES)
+endif()
+
+target_include_directories(StateEngineCore 
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+target_compile_definitions(StateEngineCore PRIVATE ENGINE_CORE_EXPORTS)
+
+if(WIN32)
+    target_compile_definitions(StateEngineCore PUBLIC WIN32_LEAN_AND_MEAN)
+    target_compile_definitions(StateEngineCore PUBLIC NOMINMAX)
+endif()
