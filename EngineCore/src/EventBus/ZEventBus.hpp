@@ -36,10 +36,10 @@ namespace StateEngine::EngineCore::EventBus {
 		static constexpr size_t kMaxBulkEventProcessCount = 128;
 
 	public:
-		static void subscribe(const TypeInfo* eventType, void* listener, EventCallback callback);
-		static void unsubscribe(const TypeInfo* eventType, void* listener, EventCallback callback);
-		static void publish(const TypeInfo* eventType, void* userdata);
-		static void flushEvents();
-		static void registerBaseEvents();
+		static void Subscribe(const TypeInfo* eventType, void* listener, EventCallback callback);
+		static void Unsubscribe(const TypeInfo* eventType, void* listener, EventCallback callback);
+		static void Publish(const TypeInfo* eventType, void* userdata);
+		static void FlushEvents();
+		static void RegisterBaseEvents();
 	};
 }

@@ -75,7 +75,7 @@ void EngineApplication::run(IApplication* app) {
 	bool isRunning{ true };
 	auto lastTime = std::chrono::high_resolution_clock::now();
 
-	ZEventBus::subscribe(GET_TYPE_INFO("ShutdownEngineEvent"), &isRunning, [](void* listener, void* userData)->bool {
+	ZEventBus::Subscribe(GET_TYPE_INFO("ShutdownEngineEvent"), &isRunning, [](void* listener, void* userData)->bool {
 		bool* isRunningPtr = reinterpret_cast<bool*>(listener);
 		*isRunningPtr = false;
 		return true;
@@ -89,7 +89,7 @@ void EngineApplication::run(IApplication* app) {
 		for (auto& system : inputPhaseSystems_) {
 			system->UpdateSystem(deltaTime);
 		}
-		ZEventBus::flushEvents();
+		ZEventBus::FlushEvents();
 		if (!isRunning) break;
 
 		for (auto& system : preLogicPhaseSystems_) {

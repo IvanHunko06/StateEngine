@@ -20,7 +20,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	else if (ul_reason_for_call == DLL_PROCESS_ATTACH) {
 		ZStringCollection::init();
 		ZTypeRegistry::RegisterBaseTypes();
-		ZEventBus::registerBaseEvents();
+		ZEventBus::RegisterBaseEvents();
 	}
 	return TRUE;
 }
