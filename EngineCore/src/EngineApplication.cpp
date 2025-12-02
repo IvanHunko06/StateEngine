@@ -5,6 +5,7 @@
 #include "EngineCore/EngineTypeSystem/TypeRegistryMacros.hpp"
 #include "EngineTypeSystem/ZTypeRegistry.hpp"
 #include "EventBus/ZEventBus.hpp"
+#include "ServiceLocator/ZServiceLocator.hpp"
 #include "Threading/CpuCoresBinding.hpp"
 #include <cassert>
 #include <chrono>
@@ -17,6 +18,7 @@ using StateEngine::EngineCore::EventBus::ZEventBus;
 using StateEngine::EngineCore::EngineTypeSystem::ZTypeRegistry;
 using StateEngine::EngineCore::Logging::ZLogger;
 using StateEngine::EngineCore::Threading::CpuCoresBinding;
+using StateEngine::EngineCore::ServiceLocator::ZServiceLocator;
 using namespace StateEngine::EngineCore::ApplicationConfigurations;
 using namespace StateEngine::EngineCore::ApplicationConfigurations::Consumers;
 using namespace StateEngine::EngineCore::EngineTypeSystem;
@@ -60,6 +62,7 @@ void EngineApplication::run(IApplication* app) {
 	else {
 		ZLOG_DEBUG("EngineCore") << "skipping DependencyRegistrationCallback";
 	}
+	ZServiceLocator::SetIsSealed(true);
 
 	for (auto& loadedModule : loadedModules_) {
 		loadedModule.instance->OnLoad();
