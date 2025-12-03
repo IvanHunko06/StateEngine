@@ -6,7 +6,6 @@ namespace StateEngine::EngineCore::DataStructures {
 	template<typename T>
 	struct StlAllocator {
 		using value_type = T;
-
 		StlAllocator() noexcept = default;
 		template<class U>
 		StlAllocator(const StlAllocator<U>&) noexcept {}
