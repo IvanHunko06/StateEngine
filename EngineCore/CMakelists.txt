@@ -30,7 +30,10 @@ if(STATE_ENGINE_CORE_USE_MIMALLOC)
             "MI_OVERRIDE OFF"
     )
     target_link_libraries(StateEngineCore PRIVATE mimalloc-static)
-    target_compile_definitions(StateEngineCore PRIVATE USE_MIMALLOC_ALLOCATOR)
+    target_compile_definitions(StateEngineCore PRIVATE 
+        USE_MIMALLOC_ALLOCATOR
+        $<$<CONFIG:Debug>:MI_DEBUG=3>
+    )
 endif()
 
 if(STATE_ENGINE_CORE_USE_EASTL)
