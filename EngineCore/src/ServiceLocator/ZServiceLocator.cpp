@@ -6,7 +6,7 @@ using namespace StateEngine::EngineCore::ServiceLocator;
 ZHashMap<const TypeInfo*, void*> ZServiceLocator::registeredServices_;
 bool ZServiceLocator::isSealed_;
 
-inline void ZServiceLocator::RegisterService(const TypeInfo* type, void* instance) {
+void ZServiceLocator::RegisterService(const TypeInfo* type, void* instance) {
 	assert(type && "type is null");
 	assert(instance && "instance is null");
 	if (!type || !instance) return;
@@ -21,13 +21,13 @@ inline void ZServiceLocator::RegisterService(const TypeInfo* type, void* instanc
 	}
 	registeredServices_[type] = instance;
 }
-inline void* ZServiceLocator::GetService(const TypeInfo* type) {
+void* ZServiceLocator::GetService(const TypeInfo* type) {
 	assert(type && "type is null");
 	if (!type) return nullptr;
 
 	return registeredServices_.contains(type) ? registeredServices_[type] : nullptr;
 }
-inline void  ZServiceLocator::RemoveService(const TypeInfo* type) {
+void ZServiceLocator::RemoveService(const TypeInfo* type) {
 	assert(type && "type is null");
 	if (!type) return;
 	if (isSealed_) {
