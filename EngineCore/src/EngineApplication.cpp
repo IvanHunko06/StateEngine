@@ -75,9 +75,8 @@ void EngineApplication::run(IApplication* app) {
 	bool isRunning{ true };
 	auto lastTime = std::chrono::high_resolution_clock::now();
 
-	ZEventBus::Subscribe(GET_TYPE_INFO("ShutdownEngineEvent"), &isRunning, [](void* listener, void* userData)->bool {
-		bool* isRunningPtr = reinterpret_cast<bool*>(listener);
-		*isRunningPtr = false;
+	ZEventBus::Subscribe(GET_TYPE_INFO("ShutdownEngineEvent"),[&isRunning](void* userData)->bool {
+		isRunning = false;
 		return true;
 	});
 	while (isRunning){

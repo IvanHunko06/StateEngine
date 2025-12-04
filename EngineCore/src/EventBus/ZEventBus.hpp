@@ -16,14 +16,11 @@ using StateEngine::EngineCore::SmartPointers::ZUniquePointer;
 using StateEngine::EngineCore::Threading::MPMCQueue;
 
 
+
 namespace StateEngine::EngineCore::EventBus {
 	class ZEventBus {
 	private:
-		struct EventListenerCallbackContext {
-			EventCallback callback;
-			void* listener;
-		};
-		static ZHashMap<const TypeInfo*, ZBuffer<EventListenerCallbackContext>> eventCallbacks_;
+		static ZHashMap<const TypeInfo*, ZBuffer<EventCallback>> eventCallbacks_;
 		static std::shared_mutex eventBusMutex_;
 		struct EventPublishTask {
 			const TypeInfo* eventType{ nullptr };
@@ -36,8 +33,8 @@ namespace StateEngine::EngineCore::EventBus {
 		static constexpr size_t kMaxBulkEventProcessCount = 128;
 
 	public:
-		static void Subscribe(const TypeInfo* eventType, void* listener, EventCallback callback);
-		static void Unsubscribe(const TypeInfo* eventType, void* listener, EventCallback callback);
+		static void Subscribe(const TypeInfo* eventType, const EventCallback& callback);
+		static void Unsubscribe(const TypeInfo* eventType, const EventCallback& callback);
 		static void Publish(const TypeInfo* eventType, void* userdata);
 		static void FlushEvents();
 		static void RegisterBaseEvents();

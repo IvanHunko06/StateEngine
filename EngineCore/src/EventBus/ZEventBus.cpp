@@ -10,29 +10,25 @@ using namespace StateEngine::EngineCore::EngineTypeSystem;
 using StateEngine::EngineCore::EngineTypeSystem::ZTypeRegistry;
 
 
-ZHashMap<const TypeInfo*, ZBuffer<ZEventBus::EventListenerCallbackContext>> ZEventBus::eventCallbacks_;
+ZHashMap<const TypeInfo*, ZBuffer<EventCallback>> ZEventBus::eventCallbacks_;
 std::shared_mutex ZEventBus::eventBusMutex_;
 MPMCQueue<ZEventBus::EventPublishTask> ZEventBus::eventsQueue_;
 
-void ZEventBus::Subscribe(const TypeInfo* eventType, void* listener, EventCallback callback) {
-	if (!eventType || !listener || !callback) {
+void ZEventBus::Subscribe(const TypeInfo* eventType, const EventCallback& callback) {
+	if (!eventType || !callback) {
 		return;
 	}
 	std::unique_lock<std::shared_mutex> lock(eventBusMutex_);
-	EventListenerCallbackContext context{
-		.callback = callback,
-		.listener = listener
-	};
 	if (eventCallbacks_.contains(eventType)) {
-		eventCallbacks_[eventType].push_back(context);
+		eventCallbacks_[eventType].push_back(callback);
 		return;
 	}
-	ZBuffer<EventListenerCallbackContext> callbacksBuffer;
-	callbacksBuffer.push_back(context);
+	ZBuffer<EventCallback> callbacksBuffer;
+	callbacksBuffer.push_back(callback);
 	eventCallbacks_[eventType] = std::move(callbacksBuffer);
 }
-void ZEventBus::Unsubscribe(const TypeInfo* eventType, void* listener, EventCallback callback) {
-	if (!eventType || !listener || !callback) {
+void ZEventBus::Unsubscribe(const TypeInfo* eventType, const EventCallback& callback) {
+	if (!eventType || !callback) {
 		return;
 	}
 	std::unique_lock<std::shared_mutex> lock(eventBusMutex_);
@@ -41,7 +37,7 @@ void ZEventBus::Unsubscribe(const TypeInfo* eventType, void* listener, EventCall
 	}
 	auto& callbacksBuffer = eventCallbacks_[eventType];
 	for (size_t i = 0; i < callbacksBuffer.size(); ++i) {
-		if (callbacksBuffer[i].callback == callback && callbacksBuffer[i].listener == listener) {
+		if (callbacksBuffer[i] == callback) {
 			callbacksBuffer.erase(callbacksBuffer.begin() +i);
 			return;
 		}
@@ -55,22 +51,22 @@ void ZEventBus::RegisterBaseEvents() {
 	END_REFLECT
 }
 void ZEventBus::FlushEvents() {
-	ZHashMap<const TypeInfo*, ZBuffer<EventListenerCallbackContext>> callbacksSnapshot;
+	ZHashMap<const TypeInfo*, ZBuffer<EventCallback>> callbacksSnapshot;
 	EventPublishTask buffer[kMaxBulkEventProcessCount];
 	size_t count;
 	while ((count = eventsQueue_.try_dequeue_bulk(buffer, kMaxBulkEventProcessCount)) != 0) {
 		for (size_t i = 0; i < count; ++i) {
 			auto& curTask = buffer[i];
 
-			ZBuffer<EventListenerCallbackContext> callbacksCopy;
+			ZBuffer<EventCallback> callbacksCopy;
 			{
 				std::shared_lock<std::shared_mutex> lock(eventBusMutex_);
 				if (!eventCallbacks_.contains(curTask.eventType)) continue;
 				callbacksCopy = eventCallbacks_[curTask.eventType];
 			}
 
-			for (auto& callbackContext : callbacksCopy) {
-				bool consumed = callbackContext.callback(callbackContext.listener, curTask.instance.getRawPtr());
+			for (auto& callback : callbacksCopy) {
+				bool consumed = callback(curTask.instance.getRawPtr());
 				if (consumed) break;
 			}
 		}
