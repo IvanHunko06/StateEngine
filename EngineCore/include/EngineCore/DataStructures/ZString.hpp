@@ -8,12 +8,18 @@ namespace StateEngine::EngineCore::DataStructures {
 	private:
 		uint32_t stringLength{ 0 };
 		const char* stringData{ nullptr };
+		size_t hashCache{ 0 };
 	public:
 		ZString() {
 			this->stringData = nullptr;
 			this->stringLength = 0;
+			this->hashCache = 0;
 		}
-		ZString(const ZString& other) : stringLength(other.stringLength), stringData(other.stringData) {
+		ZString(const ZString& other) : 
+			stringLength(other.stringLength), 
+			stringData(other.stringData),
+			hashCache(other.hashCache)
+		{
 			if (stringData) {
 				StringCollection_IncrementRefCount(stringData);
 			}
@@ -24,9 +30,16 @@ namespace StateEngine::EngineCore::DataStructures {
 			if (!stringData) return;
 
 			stringLength = static_cast<uint32_t>(strlen(stringData) + 1);
+			if (stringLength > 1 && stringData) {
+				hashCache = Fnv1aHashProvider::hashBytes(c_str(), length() - 1);
+			}
 			
 		}
-		ZString(ZString&& other) noexcept : stringLength(other.stringLength), stringData(other.stringData) {
+		ZString(ZString&& other) noexcept : 
+			stringLength(other.stringLength), 
+			stringData(other.stringData),
+			hashCache(other.hashCache)
+		{
 			other.stringData = nullptr;
 			other.stringLength = 0;
 		}
@@ -36,6 +49,7 @@ namespace StateEngine::EngineCore::DataStructures {
 			}
 			this->stringData = nullptr;
 			this->stringLength = 0;
+			this->hashCache = 0;
 		}
 
 		ZString& operator=(const ZString& other) {
@@ -45,6 +59,7 @@ namespace StateEngine::EngineCore::DataStructures {
 			}
 			stringLength = other.stringLength;
 			stringData = other.stringData;
+			hashCache = other.hashCache;
 			if (stringData) {
 				StringCollection_IncrementRefCount(stringData);
 			}
@@ -57,17 +72,16 @@ namespace StateEngine::EngineCore::DataStructures {
 			}
 			stringLength = other.stringLength;
 			stringData = other.stringData;
+			hashCache = other.hashCache;
 			other.stringData = nullptr;
 			other.stringLength = 0;
+			other.hashCache = 0;
 			return *this;
 		}
 
 		inline bool empty() const noexcept { return length() == 0 || stringData == nullptr || strcmp(stringData, "") == 0; };
 		inline size_t Hash() const noexcept{
-			if (length() <= 0 || c_str() == nullptr)
-				return 0;
-
-			return Fnv1aHashProvider::hashBytes(c_str(), length() - 1);
+			return hashCache;
 		}
 		inline const char* c_str() const noexcept{ return stringData; }
 		inline uint32_t length() const noexcept{
