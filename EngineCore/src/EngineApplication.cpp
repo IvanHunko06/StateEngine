@@ -7,6 +7,7 @@
 #include "EventBus/ZEventBus.hpp"
 #include "ServiceLocator/ZServiceLocator.hpp"
 #include "Threading/CpuCoresBinding.hpp"
+#include "JobSystem/ZJobSystem.hpp"
 #include <cassert>
 #include <chrono>
 #include <atomic>
@@ -19,6 +20,7 @@ using StateEngine::EngineCore::EngineTypeSystem::ZTypeRegistry;
 using StateEngine::EngineCore::Logging::ZLogger;
 using StateEngine::EngineCore::Threading::CpuCoresBinding;
 using StateEngine::EngineCore::ServiceLocator::ZServiceLocator;
+using StateEngine::EngineCore::JobSystem::ZJobSystem;
 using namespace StateEngine::EngineCore::ApplicationConfigurations;
 using namespace StateEngine::EngineCore::ApplicationConfigurations::Consumers;
 using namespace StateEngine::EngineCore::EngineTypeSystem;
@@ -36,11 +38,13 @@ void EngineApplication::run(IApplication* app) {
 	app->configureEngine(builder);
 
 	EngineConfiguration config = builder.build();
+	ZLogger::SetSinksAndLevelsSealed(true);
 #ifdef _WIN32
 	CpuCoresBinding::SetUseCpuSets(config.useCpuSets);
 #endif
 	CpuCoresBinding::CollectCores();
-
+	CpuCoresBinding::BindThreadToCore({ CpuCoresBinding::GetMainCoreId().logicalId });
+	ZJobSystem::Initialize();
 	// 2. Load modules
 	for (auto& path : config.modulesToLoad) {
 		ZLOG_DEBUG("EngineCore") << "loading module: " << path.c_str();
@@ -119,6 +123,8 @@ void EngineApplication::run(IApplication* app) {
 
 	// 5. Call onShutdown event for application
 	app->onShutdown();
+	
+	ZJobSystem::Shutdown();
 }
 
 IModule* EngineApplication::loadModule(const ZString& path) {

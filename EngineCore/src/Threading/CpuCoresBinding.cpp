@@ -5,9 +5,9 @@
 using namespace StateEngine::EngineCore::Threading;
 using StateEngine::EngineCore::DataStructures::ZHashSet;
 
-ZBuffer<uint32_t> CpuCoresBinding::efficiencyCores_;
-ZBuffer<uint32_t> CpuCoresBinding::perfomanceCores_;
-ZBuffer<uint32_t> CpuCoresBinding::physicalCores_;
+ZBuffer<CpuCoresBinding::CpuCoreInfo> CpuCoresBinding::efficiencyCores_;
+ZBuffer<CpuCoresBinding::CpuCoreInfo> CpuCoresBinding::perfomanceCores_;
+ZBuffer<CpuCoresBinding::CpuCoreInfo> CpuCoresBinding::physicalCores_;
 #ifdef _WIN32
 bool CpuCoresBinding::useCpuSets_;
 using PFN_GetSystemCpuSetInformation = BOOL(WINAPI*)(
@@ -91,18 +91,22 @@ bool CpuCoresBinding::TryCollectViaCpuSets() noexcept {
     while (ptr < endPtr) {
         auto info = reinterpret_cast<PSYSTEM_CPU_SET_INFORMATION>(ptr);
 
-        if (info->Type == CpuSetInformation) {
+		if (info->Type == CpuSetInformation && info->CpuSet.CoreIndex > 0) { // Skip core 0 as it is usually reserved for OS
             uint16_t id = static_cast<uint16_t>(info->CpuSet.Id);
-
+            CpuCoreInfo core{
+                .physicalId = info->CpuSet.CoreIndex,
+                .logicalId = info->CpuSet.LogicalProcessorIndex,
+                .coreId = id
+            };
             if (info->CpuSet.EfficiencyClass > 0) {
-                perfomanceCores_.push_back(id);
+                perfomanceCores_.push_back(core);
             }
             else {
-                efficiencyCores_.push_back(id);
+                efficiencyCores_.push_back(core);
             }
 
             if (seenPhysicalCoreIndices.find(info->CpuSet.CoreIndex) == seenPhysicalCoreIndices.end()) {
-                physicalCores_.push_back(id);
+                physicalCores_.push_back(core);
                 seenPhysicalCoreIndices.insert(info->CpuSet.CoreIndex);
             }
         }
@@ -120,44 +124,54 @@ void CpuCoresBinding::CollectViaLegacy() noexcept {
     ZLOG_DEBUG("EngineCore") << "Using GetLogicalProcessorInformationEx (Legacy/Fallback).";
 
     DWORD len = 0;
-    GetLogicalProcessorInformationEx(RelationProcessorCore, nullptr, &len);
+    GetLogicalProcessorInformation(nullptr, &len);
 
     if (GetLastError() != ERROR_INSUFFICIENT_BUFFER || len == 0) {
         ZLOG_ERROR("EngineCore") << "GetLogicalProcessorInformationEx init failed.";
         return;
     }
 
-    auto* rawBuffer = MemoryAllocator_AlignedAllocate(len, alignof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX));
+    auto* rawBuffer = MemoryAllocator_AlignedAllocate(len, alignof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION));
     if (!rawBuffer) return;
 
     uint8_t* buffer = reinterpret_cast<uint8_t*>(rawBuffer);
 
-    if (GetLogicalProcessorInformationEx(RelationProcessorCore, reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(buffer), &len)) {
+    if (GetLogicalProcessorInformation(reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(buffer), &len)) {
         uint8_t* ptr = buffer;
         uint8_t* endPtr = buffer + len;
 
         while (ptr < endPtr) {
-            auto info = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX>(ptr);
+            auto info = reinterpret_cast<PSYSTEM_LOGICAL_PROCESSOR_INFORMATION>(ptr);
+            if(info->Relationship != RelationProcessorCore) {
+                ptr += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
+                continue;
+			}
 
-            if (info->Relationship == RelationProcessorCore) {
-                ULONG_PTR mask = info->Processor.GroupMask[0].Mask;
-                bool isFirstInCore = true;
+            ULONG_PTR mask = info->ProcessorMask;
+            bool isFirstInCore = true;
+            uint32_t physicalCoreId = 0;
 
-                for (uint16_t i = 0; i < sizeof(ULONG_PTR) * 8; ++i) {
-                    if ((mask >> i) & 1) {
-                        perfomanceCores_.push_back(i);
-
-                        if (isFirstInCore) {
-                            physicalCores_.push_back(i);
-                            isFirstInCore = false;
-                        }
+            for (uint16_t i = 0; i < sizeof(ULONG_PTR) * 8; ++i) {
+                if ((mask >> i) & 1) {
+                    if (isFirstInCore) {
+                        physicalCoreId = i;
+						if (physicalCoreId == 0) break; // Skip core 0 as it is usually reserved for OS
+                        isFirstInCore = false;
                     }
+                    CpuCoreInfo core{
+                        .physicalId = physicalCoreId,
+                        .logicalId = i,
+                        .coreId = i
+                    };
+                    if (i == physicalCoreId)
+                        physicalCores_.push_back(core);
+
+                    perfomanceCores_.push_back(core);
                 }
             }
-            ptr += info->Size;
+			ptr += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
         }
 
-        efficiencyCores_ = perfomanceCores_;
         ZLOG_DEBUG("EngineCore") << "Legacy info collected. Physical Cores: " << physicalCores_.size();
     }
 
