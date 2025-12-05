@@ -9,7 +9,7 @@ namespace StateEngine::EngineCore::Logging {
 	private:
 		std::stringstream buffer_;
 		LogLevel logLevel_;
-		const char* moduleName_;
+		const char* sender_;
 		const char* fileName_;
 		int line_;
 	private:
@@ -24,8 +24,8 @@ namespace StateEngine::EngineCore::Logging {
 			return fileName;
 		}
 	public:
-		 ZLogStream(LogLevel level, const char* moduleName, std::source_location loc = std::source_location::current()) noexcept
-			: logLevel_(level), moduleName_(moduleName),
+		 ZLogStream(LogLevel level, const char* sender, std::source_location loc = std::source_location::current()) noexcept
+			: logLevel_(level), sender_(sender),
 			 fileName_(GetFileNameFromPath(loc.file_name())),
 			 line_(loc.line())
 		
@@ -34,7 +34,7 @@ namespace StateEngine::EngineCore::Logging {
 		~ZLogStream() noexcept{
 			std::string formattedMessage = buffer_.str();
 			if (formattedMessage.empty()) return;
-			Logger_Submit(logLevel_, moduleName_, fileName_, line_, formattedMessage.c_str());
+			Logger_Submit(logLevel_, sender_, fileName_, line_, formattedMessage.c_str());
 		}
 
 		template<typename T>
@@ -48,7 +48,7 @@ namespace StateEngine::EngineCore::Logging {
 
 		ZLogStream(ZLogStream&& other) noexcept
 			:	buffer_(std::move(other.buffer_)), logLevel_(other.logLevel_), 
-				moduleName_(other.moduleName_), fileName_(other.fileName_), 
+				sender_(other.sender_), fileName_(other.fileName_), 
 				line_(other.line_)
 		{
 
@@ -57,7 +57,7 @@ namespace StateEngine::EngineCore::Logging {
 			if (this != &other) {
 				buffer_ = std::move(other.buffer_);
 				logLevel_ = other.logLevel_;
-				moduleName_ = other.moduleName_;
+				sender_ = other.sender_;
 				fileName_ = other.fileName_;
 				line_ = other.line_;
 			}
