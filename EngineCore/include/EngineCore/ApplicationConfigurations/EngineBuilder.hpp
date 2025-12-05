@@ -15,9 +15,8 @@ namespace StateEngine::EngineCore::ApplicationConfigurations {
 			configuration_.modulesToLoad.push_back(path);
 			return *this;
 		}
-		EngineBuilder& WithDependencyRegistrationCallback(EngineConfiguration::PFN_DependencyRegistrationCallback callback, void* userData) {
+		EngineBuilder& WithDependencyRegistrationCallback(const ZFunction<void()>& callback) {
 			configuration_.dependencyRegistrationCallback = callback;
-			configuration_.dependencyRegistrationCallbackUserData = userData;
 			return *this;
 		}
 #ifdef _WIN32

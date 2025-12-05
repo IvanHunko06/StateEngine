@@ -56,11 +56,11 @@ void EngineApplication::run(IApplication* app) {
 	
 
 	if (config.dependencyRegistrationCallback) {
-		ZLOG_DEBUG("EngineCore") << "calling DependencyRegistrationCallback";
-		config.dependencyRegistrationCallback(config.dependencyRegistrationCallbackUserData);
+		ZLOG_DEBUG("EngineCore") << "Calling DependencyRegistrationCallback";
+		config.dependencyRegistrationCallback();
 	}
 	else {
-		ZLOG_DEBUG("EngineCore") << "skipping DependencyRegistrationCallback";
+		ZLOG_DEBUG("EngineCore") << "Skipping DependencyRegistrationCallback";
 	}
 	ZServiceLocator::SetIsSealed(true);
 
