@@ -7,8 +7,6 @@
 #include "EngineCore/Logging/LoggingMacros.hpp"
 #include "EngineCore/SmartPointers/ZUniquePointer.hpp"
 #include "EngineCore/Threading/MPMCQueue.hpp"
-
-#include <shared_mutex>
 using namespace StateEngine::EngineCore::EngineTypeSystem;
 using namespace StateEngine::EngineCore::DataStructures;
 using StateEngine::EngineCore::EventBus::EventCallback;
@@ -19,9 +17,18 @@ using StateEngine::EngineCore::Threading::MPMCQueue;
 
 namespace StateEngine::EngineCore::EventBus {
 	class ZEventBus {
+	public:
+		enum class SubscriptionAction : uint8_t {
+			Subscribe,
+			Unsubscribe
+		};
+		struct SubscriptionCommand {
+			SubscriptionAction action;
+			const TypeInfo* eventType;
+			EventCallback callback;
+		};
 	private:
 		static ZHashMap<const TypeInfo*, ZBuffer<EventCallback>> eventCallbacks_;
-		static std::shared_mutex eventBusMutex_;
 		struct EventPublishTask {
 			const TypeInfo* eventType{ nullptr };
 			TypeInstance instance;
@@ -30,6 +37,7 @@ namespace StateEngine::EngineCore::EventBus {
 				: eventType(instance.getTypeInfo()), instance(instance) {}
 		};
 		static MPMCQueue<EventPublishTask> eventsQueue_;
+		static MPMCQueue<SubscriptionCommand> subscriptionQueue_;
 		static constexpr size_t kMaxBulkEventProcessCount = 128;
 
 	public:
@@ -38,5 +46,7 @@ namespace StateEngine::EngineCore::EventBus {
 		static void Publish(const TypeInfo* eventType, void* userdata);
 		static void FlushEvents();
 		static void RegisterBaseEvents();
+	private:
+		static void ProcessSubscriptionCommands();
 	};
 }
