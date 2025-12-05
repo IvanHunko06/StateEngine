@@ -10,9 +10,14 @@ using namespace StateEngine::EngineCore::EngineTypeSystem;
 using StateEngine::EngineCore::EngineTypeSystem::ZTypeRegistry;
 
 
-ZHashMap<const TypeInfo*, ZBuffer<EventCallback>> ZEventBus::eventCallbacks_;
+ZHashMap<const TypeInfo*, ZBuffer<EventCallback>> ZEventBus::eventsCallbacks_;
 MPMCQueue<ZEventBus::EventPublishTask> ZEventBus::eventsQueue_;
 MPMCQueue<ZEventBus::SubscriptionCommand> ZEventBus::subscriptionQueue_;
+std::array<ZEventBus::EventFixedAllocator, 2> ZEventBus::eventAllocators_{ {
+	ZEventBus::EventFixedAllocator(ZEventBus::kEventFixedAllocatorSize),
+	ZEventBus::EventFixedAllocator(ZEventBus::kEventFixedAllocatorSize)
+} };
+std::atomic<uint8_t> ZEventBus::activeWriteIndex_;
 
 void ZEventBus::Subscribe(const TypeInfo* eventType, const EventCallback& callback) {
 	if (!eventType || !callback) {
@@ -40,7 +45,38 @@ void ZEventBus::Unsubscribe(const TypeInfo* eventType, const EventCallback& call
 	subscriptionQueue_.enqueue(cmd);
 }
 void ZEventBus::Publish(const TypeInfo* eventType, void* userdata) {
-	eventsQueue_.enqueue(TypeInstance(userdata, eventType));
+	if (!eventType) {
+		assert(false && "Invalid eventType in ZEventBus::Publish");
+		return;
+	}
+	if (!userdata) {
+		eventsQueue_.enqueue(EventPublishTask{
+			.eventType = eventType,
+			.eventData = nullptr
+		});
+		return;
+	}
+	// Allocate event data in the active allocator
+	uint8_t writeIndex = activeWriteIndex_.load(std::memory_order_relaxed);
+	auto& allocator = eventAllocators_[writeIndex];
+
+	void* eventDataMemory = allocator.allocate(eventType->size, eventType->alignment);
+	if(!eventDataMemory) {
+		assert(false && "Failed to allocate event data memory in ZEventBus::Publish");
+		ZLOG_ERROR("EventBus") << "Failed to allocate event data memory for event: " << eventType->name.c_str();
+		return;
+	}
+	// Copy construct the event data
+	if(eventType->copyConstructor) {
+		eventType->copyConstructor(eventDataMemory, userdata);
+	} else {
+		std::memcpy(eventDataMemory, userdata, eventType->size);
+	}
+	
+	eventsQueue_.enqueue(EventPublishTask{
+		.eventType = eventType,
+		.eventData = eventDataMemory
+	});
 }
 void ZEventBus::RegisterBaseEvents() {
 	BEGIN_REFLECT_STRUCT("ShutdownEngineEvent", ShutdownEngineEvent);
@@ -48,21 +84,28 @@ void ZEventBus::RegisterBaseEvents() {
 }
 void ZEventBus::FlushEvents() {
 	ProcessSubscriptionCommands();
+	uint8_t readIndex = activeWriteIndex_.load(std::memory_order_relaxed);
+	uint8_t writeIndex = (readIndex + 1) % 2;
+	activeWriteIndex_.store(writeIndex, std::memory_order_relaxed);
+
 	EventPublishTask buffer[kMaxBulkEventProcessCount];
 	size_t count;
 	while ((count = eventsQueue_.try_dequeue_bulk(buffer, kMaxBulkEventProcessCount)) != 0) {
 		for (size_t i = 0; i < count; ++i) {
 			auto& curTask = buffer[i];
 
-			if (!eventCallbacks_.contains(curTask.eventType)) continue;
-			ZBuffer<EventCallback>& callbacksCopy = eventCallbacks_[curTask.eventType];
+			if (!eventsCallbacks_.contains(curTask.eventType)) continue;
+			ZBuffer<EventCallback>& eventCallbacks = eventsCallbacks_[curTask.eventType];
 
-			for (auto& callback : callbacksCopy) {
-				bool consumed = callback(curTask.instance.getRawPtr());
+			for (auto& callback : eventCallbacks) {
+				bool consumed = callback(curTask.eventData);
 				if (consumed) break;
 			}
 		}
 	}
+
+	// Clear the read allocator
+	eventAllocators_[readIndex].clear();
 }
 
 void ZEventBus::ProcessSubscriptionCommands() {
@@ -72,19 +115,19 @@ void ZEventBus::ProcessSubscriptionCommands() {
 		for (size_t i = 0; i < count; ++i) {
 			auto& cmd = buffer[i];
 			if (cmd.action == SubscriptionAction::Subscribe) {
-				if (eventCallbacks_.contains(cmd.eventType)) {
-					eventCallbacks_[cmd.eventType].push_back(cmd.callback);
+				if (eventsCallbacks_.contains(cmd.eventType)) {
+					eventsCallbacks_[cmd.eventType].push_back(cmd.callback);
 					continue;
 				}
 				ZBuffer<EventCallback> callbacksBuffer;
 				callbacksBuffer.push_back(cmd.callback);
-				eventCallbacks_[cmd.eventType] = std::move(callbacksBuffer);
+				eventsCallbacks_[cmd.eventType] = std::move(callbacksBuffer);
 			}
 			else if (cmd.action == SubscriptionAction::Unsubscribe) {
-				if (!eventCallbacks_.contains(cmd.eventType)) {
+				if (!eventsCallbacks_.contains(cmd.eventType)) {
 					continue;
 				}
-				auto& callbacksBuffer = eventCallbacks_[cmd.eventType];
+				auto& callbacksBuffer = eventsCallbacks_[cmd.eventType];
 				for (size_t j = 0; j < callbacksBuffer.size(); ++j) {
 					if (callbacksBuffer[j] == cmd.callback) {
 						callbacksBuffer.erase(callbacksBuffer.begin() + j);
