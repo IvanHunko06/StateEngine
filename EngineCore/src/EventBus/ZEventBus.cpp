@@ -13,9 +13,9 @@ using StateEngine::EngineCore::EngineTypeSystem::ZTypeRegistry;
 ZHashMap<const TypeInfo*, ZBuffer<EventCallback>> ZEventBus::eventsCallbacks_;
 MPMCQueue<ZEventBus::EventPublishTask> ZEventBus::eventsQueue_;
 MPMCQueue<ZEventBus::SubscriptionCommand> ZEventBus::subscriptionQueue_;
-std::array<ZEventBus::EventFixedAllocator, 2> ZEventBus::eventAllocators_{ {
-	ZEventBus::EventFixedAllocator(ZEventBus::kEventFixedAllocatorSize),
-	ZEventBus::EventFixedAllocator(ZEventBus::kEventFixedAllocatorSize)
+std::array<ZFrameAllocator, 2> ZEventBus::eventAllocators_{ {
+	ZFrameAllocator(ZEventBus::kEventFixedAllocatorSize),
+	ZFrameAllocator(ZEventBus::kEventFixedAllocatorSize)
 } };
 std::atomic<uint8_t> ZEventBus::activeWriteIndex_;
 
