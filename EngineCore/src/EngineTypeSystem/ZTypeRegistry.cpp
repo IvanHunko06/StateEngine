@@ -54,4 +54,7 @@ void ZTypeRegistry::RegisterBaseTypes() {
 	REGISTER_PRIMITIVE("int64", int64_t);
 	REGISTER_PRIMITIVE("uint64", uint64_t);
 
+	REGISTER_PRIMITIVE("float", float);
+	REGISTER_PRIMITIVE("double", double);
+
 }
