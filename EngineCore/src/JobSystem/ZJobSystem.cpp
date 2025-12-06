@@ -207,13 +207,13 @@ std::optional<ZJobSystem::JobInternal> ZJobSystem::FetchJob(JobPriority threadPr
 		if (jobQueues_[static_cast<size_t>(JobPriority::Highest)].wait_dequeue_timed(job, kWaitTimeout)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::High)].wait_dequeue_timed(job, kWaitTimeout)) {
+		if (jobQueues_[static_cast<size_t>(JobPriority::High)].try_dequeue(job)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Low)].wait_dequeue_timed(job, kWaitTimeout)) {
+		if (jobQueues_[static_cast<size_t>(JobPriority::Low)].try_dequeue(job)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Lowest)].wait_dequeue_timed(job, kWaitTimeout)) {
+		if (jobQueues_[static_cast<size_t>(JobPriority::Lowest)].try_dequeue(job)) {
 			return job;
 		}
 	}
@@ -222,13 +222,13 @@ std::optional<ZJobSystem::JobInternal> ZJobSystem::FetchJob(JobPriority threadPr
 		if (jobQueues_[static_cast<size_t>(JobPriority::High)].wait_dequeue_timed(job, kWaitTimeout)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Highest)].wait_dequeue_timed(job, kWaitTimeout)) {
+		if (jobQueues_[static_cast<size_t>(JobPriority::Highest)].try_dequeue(job)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Low)].wait_dequeue_timed(job, kWaitTimeout)) {
+		if (jobQueues_[static_cast<size_t>(JobPriority::Low)].try_dequeue(job)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Lowest)].wait_dequeue_timed(job, kWaitTimeout)) {
+		if (jobQueues_[static_cast<size_t>(JobPriority::Lowest)].try_dequeue(job)) {
 			return job;
 		}
 	}
@@ -237,7 +237,7 @@ std::optional<ZJobSystem::JobInternal> ZJobSystem::FetchJob(JobPriority threadPr
 		if (jobQueues_[static_cast<size_t>(JobPriority::Low)].wait_dequeue_timed(job, kWaitTimeout)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Lowest)].wait_dequeue_timed(job, kWaitTimeout)) {
+		if (jobQueues_[static_cast<size_t>(JobPriority::Lowest)].try_dequeue(job)) {
 			return job;
 		}
 	}
@@ -246,7 +246,7 @@ std::optional<ZJobSystem::JobInternal> ZJobSystem::FetchJob(JobPriority threadPr
 		if (jobQueues_[static_cast<size_t>(JobPriority::Lowest)].wait_dequeue_timed(job, kWaitTimeout)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Low)].wait_dequeue_timed(job, kWaitTimeout)) {
+		if (jobQueues_[static_cast<size_t>(JobPriority::Low)].try_dequeue(job)) {
 			return job;
 		}
 	}
