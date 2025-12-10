@@ -1,11 +1,6 @@
 #pragma once
-#include <cstdint>
-#include <cassert>
-#include <algorithm>
-#include "ConvertableToItemConcept.hpp"
-#include "EngineCore/MemoryManagment/MemoryAllocatorExports.hpp"
 #ifdef STATE_ENGINE_USE_EASTL
-#include <EASTL/vector.h>
+#include "EASTL/vector.h"
 #include "EastlAllocator.hpp"
 #else
 #include <vector>

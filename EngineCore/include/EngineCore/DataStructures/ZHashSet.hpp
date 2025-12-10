@@ -1,7 +1,7 @@
 #include "EngineCore/Hashing/ObjectHasher.hpp"
 #include "EngineCore/Hashing/Fnv1aHashProvider.hpp"
 #ifdef STATE_ENGINE_USE_EASTL
-#include <EASTL/unordered_set.h>
+#include "EASTL/unordered_set.h"
 #include "EastlAllocator.hpp"
 #else
 #include <unordered_set>
