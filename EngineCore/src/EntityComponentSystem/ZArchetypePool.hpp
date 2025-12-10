@@ -1,13 +1,15 @@
 #pragma once
 #include <cstdint>
-#include "EngineCore/DataStructures/ZBuffer.hpp"
-#include "EngineCore/DataStructures/ZHashMap.hpp"
+#include "EngineCore/DataStructures/ZFixedBuffer.hpp"
+#include "EngineCore/DataStructures/ZFixedHashMap.hpp"
+#include "EngineCore/DataStructures/ZFixedHashSet.hpp"
 #include "EngineCore/EngineTypeSystem/TypeInfo.hpp"
 #include "EngineCore/EntityComponentSystem/EcsEntity.hpp"
 
-using StateEngine::EngineCore::DataStructures::ZBuffer;
 using StateEngine::EngineCore::EngineTypeSystem::TypeInfo;
-using StateEngine::EngineCore::DataStructures::ZHashMap;
+using StateEngine::EngineCore::DataStructures::ZFixedBuffer;
+using StateEngine::EngineCore::DataStructures::ZFixedHashMap;
+using StateEngine::EngineCore::DataStructures::ZFixedHashSet;
 namespace StateEngine::EngineCore::EntityComponentSystem {
 	class ZArchetypeComponentRegistry;
 	class ZArchetypePool {
@@ -30,12 +32,12 @@ namespace StateEngine::EngineCore::EntityComponentSystem {
 		size_t chunkSize_{ 0 };
 		size_t archetypeKey{ 0 };
 		size_t chunksCount{ 0 };
-		ZBuffer<size_t> componentNamesHashCodes_{};
-		ZBuffer<ComponentMetadata> components_{};
-		ZHashMap<size_t, size_t> componentHashToIndexMap_{};
+		ZFixedHashSet<size_t, 32> componentNamesHashCodes_{};
+		ZFixedBuffer<ComponentMetadata, 32> components_{};
+		ZFixedHashMap<size_t, size_t, 32> componentHashToIndexMap_{};
 		friend class ZArchetypeComponentRegistry;
 	public:
-		ZArchetypePool(const ZBuffer<size_t>& components);
+		ZArchetypePool(const ZFixedBuffer<size_t, 32>& components);
 		~ZArchetypePool();
 		ZArchetypePool() = default;
 		struct AllocResult {
@@ -48,10 +50,10 @@ namespace StateEngine::EngineCore::EntityComponentSystem {
 		inline size_t GetKey() const noexcept {
 			return archetypeKey;
 		}
-		inline const ZBuffer<size_t> GetComponentHashes() const noexcept {
+		inline const ZFixedHashSet<size_t, 32>& GetComponentHashes() const noexcept {
 			return componentNamesHashCodes_;
 		}
-		inline const ZBuffer<ComponentMetadata> GetComponentsMetadata() const noexcept {
+		inline const ZFixedBuffer<ComponentMetadata, 32>& GetComponentsMetadata() const noexcept {
 			return components_;
 		}
 		inline const EcsEntity* GetEntityIdArray(ArchetypeChunk* chunk) const noexcept{
@@ -64,6 +66,9 @@ namespace StateEngine::EngineCore::EntityComponentSystem {
 			size_t idx = componentHashToIndexMap_[componentHash];
 			auto& meta = components_[idx];
 			return reinterpret_cast<uint8_t*>(chunk) + meta.chunkOffset;
+		}
+		inline bool HasComponent(size_t componentHash) {
+			return componentNamesHashCodes_.contains(componentHash);
 		}
 	private:
 		void CalculateLayout(); // Вызовем это в конструкторе

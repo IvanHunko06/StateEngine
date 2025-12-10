@@ -2,16 +2,21 @@
 #include "EngineCore/EngineTypeSystem/TypeRegistryExports.hpp"
 #include "EngineCore/Logging/LoggingMacros.hpp"
 #include "EngineCore/EngineTypeSystem/TypeKind.hpp"
+
 using namespace StateEngine::EngineCore::EntityComponentSystem;
 using namespace StateEngine::EngineCore::EngineTypeSystem;
+using namespace StateEngine::EngineCore::DataStructures;
 
 EcsEntity ZArchetypeComponentRegistry::CreateEntity() {
-	EcsEntity entity = nextEntity_++;
+	EcsEntity entity;
+	if (!freeIndices_->try_dequeue(entity)) {
+		entity = nextEntity_.fetch_add(1, std::memory_order_relaxed);
+	}
 	UpdateCommand cmd{
 		.type = UpdateCommand::CommandType::CreateEntity,
 		.entity = entity
 	};
-	commandsQueue_.enqueue(cmd);
+	commandsQueue_->enqueue(cmd);
 	return entity;
 }
 void ZArchetypeComponentRegistry::DestroyEntity(EcsEntity entity) {
@@ -19,7 +24,7 @@ void ZArchetypeComponentRegistry::DestroyEntity(EcsEntity entity) {
 		.type = UpdateCommand::CommandType::DestroyEntity,
 		.entity = entity
 	};
-	commandsQueue_.enqueue(cmd);
+	commandsQueue_->enqueue(cmd);
 }
 
 void ZArchetypeComponentRegistry::AddComponentToEntity(EcsEntity entity, size_t componentNameHash, const void* data) {
@@ -49,7 +54,7 @@ void ZArchetypeComponentRegistry::AddComponentToEntity(EcsEntity entity, size_t 
 		 .dataSize = componentType->size,
 		 .dataPtr = storedData
 	};
-	commandsQueue_.enqueue(cmd);
+	commandsQueue_->enqueue(cmd);
 }
 void ZArchetypeComponentRegistry::RemoveComponentFromEntity(EcsEntity entity, size_t componentNameHash) {
 	UpdateCommand cmd{
@@ -57,7 +62,7 @@ void ZArchetypeComponentRegistry::RemoveComponentFromEntity(EcsEntity entity, si
 		 .entity = entity,
 		 .componentHash = componentNameHash,
 	};
-	commandsQueue_.enqueue(cmd);
+	commandsQueue_->enqueue(cmd);
 }
 
 void ZArchetypeComponentRegistry::FlushUpdateCommands() {
@@ -69,13 +74,13 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 
 	constexpr size_t kMaxBulkSize = 64;
 	UpdateCommand commands[kMaxBulkSize];
-	while (size_t count = commandsQueue_.try_dequeue_bulk(commands, kMaxBulkSize)) {
+	while (size_t count = commandsQueue_->try_dequeue_bulk(commands, kMaxBulkSize)) {
 		for (size_t i = 0; i < count; ++i) {
 			auto& curCommand = commands[i];
 			if (curCommand.type == UpdateCommand::CommandType::CreateEntity) {
-				auto alloc = emptyEntities_.AllocateEntity(curCommand.entity);
+				auto alloc = emptyEntities_->AllocateEntity(curCommand.entity);
 				entityIndex_[curCommand.entity] = {
-					.archetype = &emptyEntities_,
+					.archetype = emptyEntities_.get(),
 					.chunk = alloc.chunk,
 					.rowIndex = alloc.index
 				};
@@ -88,6 +93,7 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 					entityIndex_[movedEntity] = record;
 				}
 				entityIndex_.erase(curCommand.entity);
+				freeIndices_->enqueue(curCommand.entity);
 			}
 			else if (curCommand.type == UpdateCommand::CommandType::AddComponent) {
 				if (!entityIndex_.contains(curCommand.entity)) continue;
@@ -104,8 +110,8 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 					newHash = additionEdgesTransitions_[oldHash][curCommand.componentHash];
 				}
 				else {
-					ZBuffer<size_t> hashes = oldPool->GetComponentHashes();
-					hashes.push_back(curCommand.componentHash);
+					auto hashes = oldPool->GetComponentHashes();
+					hashes.insert(curCommand.componentHash);
 					std::sort(hashes.begin(), hashes.end());
 
 					auto& newPoolRef = GetOrCreatePool(hashes);
@@ -132,7 +138,7 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 					newHash = deletionEdgesTransitions_[oldHash][curCommand.componentHash];
 				}
 				else {
-					ZBuffer<size_t> hashes = oldPool->GetComponentHashes();
+					auto hashes = oldPool->GetComponentHashes();
 					hashes.erase(std::remove(hashes.begin(), hashes.end(), curCommand.componentHash), hashes.end());
 					std::sort(hashes.begin(), hashes.end());
 
@@ -147,10 +153,9 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 			}
 		}
 	}
-
 }
 
-ZArchetypePool& ZArchetypeComponentRegistry::GetOrCreatePool(const ZBuffer<size_t>& componentHashes) {
+ZArchetypePool& ZArchetypeComponentRegistry::GetOrCreatePool(const ZFixedHashSet<size_t, 32>& componentHashes) {
 	size_t newHash = 0;
 	for (auto& hash : componentHashes) {
 		newHash = Fnv1aHashProvider::combineHash(newHash, hash);
@@ -187,6 +192,45 @@ void ZArchetypeComponentRegistry::MoveEntity(EcsEntity entity, ZArchetypePool* o
 	}
 }
 
-void ZArchetypeComponentRegistry::ForEachEntity(ForeachCallbackFunction&& callback, ZBuffer<size_t> requiredComponents) {
+void ZArchetypeComponentRegistry::ForEachComponent(ForeachCallbackFunction&& callback, const ZFixedBuffer<size_t, 32>& requiredComponents) {
+	ZFixedBuffer<size_t, 32> requiredComponentsCopy = requiredComponents;
+	std::sort(requiredComponentsCopy.begin(), requiredComponentsCopy.end());
+	size_t queryHash = 0;
+	for (auto& hash : requiredComponentsCopy) {
+		queryHash = Fnv1aHashProvider::combineHash(queryHash, hash);
+	}
 
+	if (!cachedQueries.contains(queryHash)) {
+		LookupQuery query{
+			.requiredComponentsHash = queryHash,
+			.requiredComponents = requiredComponents,
+		};
+		for (auto& [hash, pool] : archetypePools_) {
+			bool suitable = true;
+			for (auto& requiredComponent : requiredComponents) {
+				if (!pool->HasComponent(requiredComponent)) {
+					suitable = false;
+					break;
+				}
+			}
+			if (!suitable) continue;
+			query.pools.push_back(pool.get());
+		}
+		cachedQueries[queryHash] = std::move(query);
+	}
+
+	auto& query = cachedQueries[queryHash];
+	ZFixedBuffer<void*, 32> dataPointers;
+	for (auto pool : query.pools) {
+		ZArchetypePool::ArchetypeChunk* chunk = pool->headChunk_;
+		for (size_t i = 0; i < pool->chunksCount && chunk; ++i) {
+			dataPointers.clear();
+			for (auto& component : requiredComponents) {
+				void* data = pool->GetRawComponentArray(chunk, component);
+				dataPointers.push_back(data);
+			}
+			callback(dataPointers.begin(), dataPointers.size());
+			chunk = chunk->next;
+		}
+	}
 }

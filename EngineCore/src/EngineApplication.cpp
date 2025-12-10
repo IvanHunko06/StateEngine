@@ -45,6 +45,7 @@ void EngineApplication::run(IApplication* app) {
 	CpuCoresBinding::CollectCores();
 	CpuCoresBinding::BindThreadToCore({ CpuCoresBinding::GetMainCoreId().logicalId });
 	ZJobSystem::Initialize();
+	
 	// 2. Load modules
 	for (auto& path : config.modulesToLoad) {
 		ZLOG_DEBUG("EngineCore") << "loading module: " << path.c_str();

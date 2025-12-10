@@ -210,12 +210,6 @@ std::optional<ZJobSystem::JobInternal> ZJobSystem::FetchJob(JobPriority threadPr
 		if (jobQueues_[static_cast<size_t>(JobPriority::High)].try_dequeue(job)) {
 			return job;
 		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Low)].try_dequeue(job)) {
-			return job;
-		}
-		if (jobQueues_[static_cast<size_t>(JobPriority::Lowest)].try_dequeue(job)) {
-			return job;
-		}
 	}
 	else if (threadPriority == JobPriority::High) {
 		JobInternal job;
