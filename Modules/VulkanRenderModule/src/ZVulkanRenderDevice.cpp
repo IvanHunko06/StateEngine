@@ -2,6 +2,7 @@
 #include "EngineCore/Logging/LoggingMacros.hpp"
 #include "QueueManagment/QueueFamilyOracle.hpp"
 #include "EngineCore/DataStructures/ZHashSet.hpp"
+#include <assert.h>
 
 using namespace QueueManagment;
 using namespace StateEngine::EngineCore::DataStructures;

@@ -8,6 +8,7 @@
 #include <typeinfo>
 #include <type_traits>
 #include <concepts>
+#include <stdio.h>
 
 using namespace StateEngine::EngineCore::DataStructures;
 

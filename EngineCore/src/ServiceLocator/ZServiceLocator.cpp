@@ -1,5 +1,6 @@
 #include "ZServiceLocator.hpp"
 #include "EngineCore/Logging/LoggingMacros.hpp"
+#include <assert.h>
 
 using namespace StateEngine::EngineCore::ServiceLocator;
 
