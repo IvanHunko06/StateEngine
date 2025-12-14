@@ -1,6 +1,7 @@
 #pragma once
 #include "EngineCore/Threading/MPMCQueue.hpp"
 #include "EngineCore/MemoryManagment/MemoryAllocatorExports.hpp"
+#include "EngineCore/Logging/LoggingMacros.hpp"
 
 using StateEngine::EngineCore::Threading::MPMCQueue;
 namespace StateEngine::EngineCore::MemoryManagment {
@@ -10,12 +11,17 @@ namespace StateEngine::EngineCore::MemoryManagment {
         size_t capacity_{ 0 };
         std::atomic<size_t> allocated_{ 0 };
         MPMCQueue<void*> fallbackAllocations_;
+        const char* name_{ nullptr };
 
     public:
-        ZFrameAllocator(size_t capacity) : capacity_(capacity) {
+        ZFrameAllocator(size_t capacity, const char* name = nullptr) : 
+            capacity_(capacity),
+            name_(name)
+        {
             memory_ = MemoryAllocator_AlignedAllocate(capacity, 64);
             allocated_.store(0, std::memory_order_relaxed);
         }
+        
 
         ~ZFrameAllocator() {
             clear();
@@ -51,6 +57,10 @@ namespace StateEngine::EngineCore::MemoryManagment {
 
     private:
         void* allocateFallback(size_t size, size_t alignment) {
+            ZLOG_WARN("ZFrameAllocator") 
+                << "Fallback allocation of size " << size 
+                << " and alignment " << alignment
+                << " for pool allocator " << (name_ ? name_ : "");
             void* ptr = MemoryAllocator_AlignedAllocate(size, alignment);
             if (ptr) {
                 fallbackAllocations_.enqueue(ptr);
