@@ -1,9 +1,9 @@
 #pragma once
 
 namespace StateEngine::EngineCore {
-    class IUpdatableSystem {
+    class IEngineSystem {
     public:
-        virtual ~IUpdatableSystem() = default;
+        virtual ~IEngineSystem() = default;
         virtual void UpdateSystem(float realDeltaTime) = 0;
     };
 }

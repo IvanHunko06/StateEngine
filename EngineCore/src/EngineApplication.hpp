@@ -23,15 +23,14 @@ namespace StateEngine::EngineCore {
 #endif
 		};
 		static ZBuffer<LoadedModuleContext> loadedModules_;
-		static ZBuffer<IUpdatableSystem*> inputPhaseSystems_;
-		static ZBuffer<IUpdatableSystem*> preLogicPhaseSystems_;
-		static ZBuffer<IUpdatableSystem*> physicsPhaseSystems_;
-		static ZBuffer<IUpdatableSystem*> postLogicPhaseSystems_;
-		static ZBuffer<IUpdatableSystem*> renderPhaseSystems_;
+		static ZBuffer<IEngineSystem*> inputPhaseSystems_;
+		static ZBuffer<IEngineSystem*> preLogicPhaseSystems_;
+		static ZBuffer<IEngineSystem*> physicsPhaseSystems_;
+		static ZBuffer<IEngineSystem*> postLogicPhaseSystems_;
+		static ZBuffer<IEngineSystem*> renderPhaseSystems_;
 	public:
-		static void run(IApplication* app);
-		static void registerSystem(EngineUpdatePhase phase, IUpdatableSystem* system);
-
+		static void Run(IApplication* app);
+		static void RegisterEngineSystem(EngineUpdatePhase phase, IEngineSystem* system);
 	private:
 		static IModule* loadModule(const ZString& path);
 		static void applyConfigurations(IModule* module, const EngineConfiguration& configuration);

@@ -14,7 +14,7 @@
 
 using StateEngine::EngineCore::EngineApplication;
 using StateEngine::EngineCore::IModule;
-using StateEngine::EngineCore::IUpdatableSystem;
+using StateEngine::EngineCore::IEngineSystem;
 using StateEngine::EngineCore::EventBus::ZEventBus;
 using StateEngine::EngineCore::EngineTypeSystem::ZTypeRegistry;
 using StateEngine::EngineCore::Logging::ZLogger;
@@ -170,7 +170,7 @@ void EngineApplication::applyConfigurations(IModule* module, const EngineConfigu
 	}
 }
 
-void EngineApplication::registerSystem(EngineUpdatePhase phase, IUpdatableSystem* system) {
+void EngineApplication::RegisterEngineSystem(EngineUpdatePhase phase, IEngineSystem* system) {
 	switch (phase)
 	{
 	case StateEngine::EngineCore::EngineUpdatePhase::Input:

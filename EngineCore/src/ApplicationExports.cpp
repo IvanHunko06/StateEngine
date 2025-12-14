@@ -11,10 +11,10 @@ extern "C" {
 			return;
 		}
 		isRunning = true;
-		EngineApplication::run(app);
+		EngineApplication::Run(app);
 		isRunning = false;
 	}
-	ENGINE_CORE_API void Application_RegisterSystem(EngineUpdatePhase phase, IUpdatableSystem* system) {
-		EngineApplication::registerSystem(phase, system);
+	ENGINE_CORE_API void Application_RegisterSystem(EngineUpdatePhase phase, IEngineSystem* system) {
+		EngineApplication::RegisterEngineSystem(phase, system);
 	}
 }
