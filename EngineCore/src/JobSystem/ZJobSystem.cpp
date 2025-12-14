@@ -306,7 +306,12 @@ bool ZJobSystem::ExecuteNextJob(JobPriority threadPriority) {
 	if (!jobOpt.has_value()) return false;
 	JobInternal job = jobOpt.value();
 	if (!job.function) return true; // Empty job used to wake up thread during shutdown
-	job.function(job.rangeStart, job.rangeEnd);
+	
+	if (job.completionHandle)
+		job.function(job.rangeStart, job.rangeEnd, &job.completionHandle->isCanceled);
+	else
+		job.function(job.rangeStart, job.rangeEnd, nullptr);
+
 	if (job.completionHandle) {
 		uint32_t oldValue = job.completionHandle->remainingSubtasks.fetch_sub(1, std::memory_order_acq_rel);
 		if (oldValue == 1) {
