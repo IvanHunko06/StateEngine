@@ -26,13 +26,13 @@ using namespace StateEngine::EngineCore::ApplicationConfigurations::Consumers;
 using namespace StateEngine::EngineCore::EngineTypeSystem;
 
 ZBuffer<EngineApplication::LoadedModuleContext> EngineApplication::loadedModules_;
-ZBuffer<IUpdatableSystem*> EngineApplication::inputPhaseSystems_;
-ZBuffer<IUpdatableSystem*> EngineApplication::preLogicPhaseSystems_;
-ZBuffer<IUpdatableSystem*> EngineApplication::physicsPhaseSystems_;
-ZBuffer<IUpdatableSystem*> EngineApplication::postLogicPhaseSystems_;
-ZBuffer<IUpdatableSystem*> EngineApplication::renderPhaseSystems_;
+ZBuffer<IEngineSystem*> EngineApplication::inputPhaseSystems_;
+ZBuffer<IEngineSystem*> EngineApplication::preLogicPhaseSystems_;
+ZBuffer<IEngineSystem*> EngineApplication::physicsPhaseSystems_;
+ZBuffer<IEngineSystem*> EngineApplication::postLogicPhaseSystems_;
+ZBuffer<IEngineSystem*> EngineApplication::renderPhaseSystems_;
 
-void EngineApplication::run(IApplication* app) {
+void EngineApplication::Run(IApplication* app) {
 	// 1. Configuration
 	EngineBuilder builder;
 	app->configureEngine(builder);
@@ -82,7 +82,7 @@ void EngineApplication::run(IApplication* app) {
 
 	ZEventBus::Subscribe(GET_TYPE_INFO("ShutdownEngineEvent"),[&isRunning](void* userData)->bool {
 		isRunning = false;
-		return true;
+		return false;
 	});
 	while (isRunning){
 		auto curentTime = std::chrono::high_resolution_clock::now();

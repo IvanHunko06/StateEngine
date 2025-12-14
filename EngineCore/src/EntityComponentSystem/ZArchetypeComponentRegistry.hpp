@@ -48,7 +48,7 @@ namespace StateEngine::EngineCore::EntityComponentSystem {
 		ZHashMap<size_t, LookupQuery> cachedQueries;
 		ZUniquePointer<ZArchetypePool> emptyEntities_ = 
 			ZUniquePointer<ZArchetypePool>::make(ZFixedBuffer <size_t, 32>());
-		std::atomic<EcsEntity> nextEntity_ = 1;
+		std::atomic<uint32_t> nextEntity_ = 1;
 		ZUniquePointer<MPMCQueue<UpdateCommand>> commandsQueue_ = ZUniquePointer<MPMCQueue<UpdateCommand>>::make();
 		ZUniquePointer<MPMCQueue<EcsEntity>> freeIndices_ = ZUniquePointer<MPMCQueue<EcsEntity>>::make();
 		std::array<ZFrameAllocator, 2> dataCopyAllocators_{ {
@@ -63,11 +63,11 @@ namespace StateEngine::EngineCore::EntityComponentSystem {
 		void AddComponentToEntity(EcsEntity entity, size_t componentNameHash, const void* data);
 		void RemoveComponentFromEntity(EcsEntity entity, size_t componentNameHash);
 
-		void ForEachComponent(ForeachCallbackFunction&& callback, const ZFixedBuffer<size_t, 32>& requiredComponents);
+		void ForEachComponent(const ForeachCallbackFunction& callback, const ZFixedBuffer<size_t, 32>& requiredComponents);
 
 		void FlushUpdateCommands();
 	private:
-		ZArchetypePool& GetOrCreatePool(const ZFixedHashSet<size_t, 32>& componentHashes);
+		ZArchetypePool& GetOrCreatePool(const ZFixedBuffer<size_t, 32>& componentHashes);
 		void MoveEntity(EcsEntity entity, ZArchetypePool* oldPool, ZArchetypePool* newPool, void* newComponentData);
 	};
 }

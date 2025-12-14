@@ -10,7 +10,8 @@ using namespace StateEngine::EngineCore::DataStructures;
 EcsEntity ZArchetypeComponentRegistry::CreateEntity() {
 	EcsEntity entity;
 	if (!freeIndices_->try_dequeue(entity)) {
-		entity = nextEntity_.fetch_add(1, std::memory_order_relaxed);
+		entity.entityId = nextEntity_.fetch_add(1, std::memory_order_relaxed);
+		entity.generationId = 0;
 	}
 	UpdateCommand cmd{
 		.type = UpdateCommand::CommandType::CreateEntity,
@@ -110,11 +111,15 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 					newHash = additionEdgesTransitions_[oldHash][curCommand.componentHash];
 				}
 				else {
-					auto hashes = oldPool->GetComponentHashes();
-					hashes.insert(curCommand.componentHash);
-					std::sort(hashes.begin(), hashes.end());
+					auto& hashes = oldPool->GetComponentHashes();
+					ZFixedBuffer<size_t, 32> hashesBuffer;
+					for (auto hash : hashes) {
+						hashesBuffer.push_back(hash);
+					}
+					hashesBuffer.push_back(curCommand.componentHash);
+					std::sort(hashesBuffer.begin(), hashesBuffer.end());
 
-					auto& newPoolRef = GetOrCreatePool(hashes);
+					auto& newPoolRef = GetOrCreatePool(hashesBuffer);
 					newHash = newPoolRef.GetKey();
 
 					additionEdgesTransitions_[oldHash][curCommand.componentHash] = newHash;
@@ -138,11 +143,14 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 					newHash = deletionEdgesTransitions_[oldHash][curCommand.componentHash];
 				}
 				else {
-					auto hashes = oldPool->GetComponentHashes();
-					hashes.erase(std::remove(hashes.begin(), hashes.end(), curCommand.componentHash), hashes.end());
-					std::sort(hashes.begin(), hashes.end());
+					auto& hashes = oldPool->GetComponentHashes();
+					ZFixedBuffer<size_t, 32> hashesBuffer;
+					for (auto hash : hashes) {
+						if (hash != curCommand.componentHash) hashesBuffer.push_back(hash);
+					}
+					std::sort(hashesBuffer.begin(), hashesBuffer.end());
 
-					auto& newPoolRef = GetOrCreatePool(hashes);
+					auto& newPoolRef = GetOrCreatePool(hashesBuffer);
 					newHash = newPoolRef.GetKey();
 
 					deletionEdgesTransitions_[oldHash][curCommand.componentHash] = newHash;
@@ -155,7 +163,7 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 	}
 }
 
-ZArchetypePool& ZArchetypeComponentRegistry::GetOrCreatePool(const ZFixedHashSet<size_t, 32>& componentHashes) {
+ZArchetypePool& ZArchetypeComponentRegistry::GetOrCreatePool(const ZFixedBuffer<size_t, 32>& componentHashes) {
 	size_t newHash = 0;
 	for (auto& hash : componentHashes) {
 		newHash = Fnv1aHashProvider::combineHash(newHash, hash);
@@ -165,7 +173,20 @@ ZArchetypePool& ZArchetypeComponentRegistry::GetOrCreatePool(const ZFixedHashSet
 		return *archetypePools_[newHash].get();
 
 	auto pool = ZUniquePointer<ZArchetypePool>::make(componentHashes);
+	for (auto& [queryHash, query] : cachedQueries) {
+		bool suitable = true;
+		for (auto requiredComponent : query.requiredComponents) {
+			if (!pool->HasComponent(requiredComponent)) {
+				suitable = false;
+				break;
+			}
+		}
+		if (suitable) {
+			query.pools.push_back(pool.get());
+		}
+	}
 	archetypePools_[newHash] = std::move(pool);
+
 
 	return *archetypePools_[newHash].get();
 }
@@ -192,7 +213,7 @@ void ZArchetypeComponentRegistry::MoveEntity(EcsEntity entity, ZArchetypePool* o
 	}
 }
 
-void ZArchetypeComponentRegistry::ForEachComponent(ForeachCallbackFunction&& callback, const ZFixedBuffer<size_t, 32>& requiredComponents) {
+void ZArchetypeComponentRegistry::ForEachComponent(const ForeachCallbackFunction& callback, const ZFixedBuffer<size_t, 32>& requiredComponents) {
 	ZFixedBuffer<size_t, 32> requiredComponentsCopy = requiredComponents;
 	std::sort(requiredComponentsCopy.begin(), requiredComponentsCopy.end());
 	size_t queryHash = 0;
@@ -229,7 +250,7 @@ void ZArchetypeComponentRegistry::ForEachComponent(ForeachCallbackFunction&& cal
 				void* data = pool->GetRawComponentArray(chunk, component);
 				dataPointers.push_back(data);
 			}
-			callback(dataPointers.begin(), dataPointers.size());
+			callback(dataPointers.begin(), chunk->count);
 			chunk = chunk->next;
 		}
 	}

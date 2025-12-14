@@ -14,7 +14,6 @@ ZArchetypePool::ZArchetypePool(const ZFixedBuffer <size_t, 32>& components) {
     for (auto& component : componentNamesHashCodes_) {
         componentNamesHashCodes_.insert(component);
     }
-	std::sort(componentNamesHashCodes_.begin(), componentNamesHashCodes_.end());
 	if (components.size() > 0) {
 		for (size_t i = 0; i < components.size(); ++i) {
             const TypeInfo* typeInfo = TypeRegistry_GetTypeInfo(components[i]);
