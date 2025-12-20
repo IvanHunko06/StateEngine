@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <type_traits>
+#include <string_view>
 
 namespace StateEngine::EngineCore::Hashing {
 
@@ -49,6 +50,24 @@ namespace StateEngine::EngineCore::Hashing {
             size_t index = 0;
             while (str[index++] != '\0') {
                 hash = hash ^ str[index - 1];
+                hash = hash * fnvPrime;
+            }
+            return hash;
+        }
+        consteval static size_t HashString(const std::string_view& str)
+        {
+            size_t hash     = 0;
+            size_t fnvPrime = 0;
+            if constexpr (sizeof(size_t) == 8) {
+                hash     = 14695981039346656037;
+                fnvPrime = 1099511628211;
+            }
+            else {
+                hash     = 2166136261;
+                fnvPrime = 16777619;
+            }
+            for (char ch : str) {
+                hash = hash ^ ch;
                 hash = hash * fnvPrime;
             }
             return hash;
