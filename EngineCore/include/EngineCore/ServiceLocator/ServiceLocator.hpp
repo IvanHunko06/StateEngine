@@ -7,6 +7,7 @@ namespace StateEngine::EngineCore::ServiceLocator {
     class ServiceLocator {
       public:
         template <typename T>
+            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T> && std::is_class_v<T>)
         static T& GetRequiredService()
         {
             const TypeInfo& type = EngineTypeSystem::TypeRegistry::GetRequiredType<T>();
@@ -19,6 +20,7 @@ namespace StateEngine::EngineCore::ServiceLocator {
         }
 
         template <typename T>
+            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T> && std::is_class_v<T>)
         static T* TryGetService()
         {
             const TypeInfo* type = EngineTypeSystem::TypeRegistry::TryGetType<T>();
@@ -30,6 +32,7 @@ namespace StateEngine::EngineCore::ServiceLocator {
         }
 
         template <typename T>
+            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T> && std::is_class_v<T>)
         static void RegisterService(T* instance)
         {
             const TypeInfo& type = EngineTypeSystem::TypeRegistry::GetRequiredType<T>();
@@ -38,6 +41,7 @@ namespace StateEngine::EngineCore::ServiceLocator {
         }
 
         template <typename T>
+            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T> && std::is_class_v<T>)
         static void RemoveService()
         {
             const TypeInfo* type = EngineTypeSystem::TypeRegistry::TryGetType<T>();

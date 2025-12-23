@@ -3,6 +3,7 @@
 #include "GetCompileTimeNames.hpp"
 #include "TypeInfo.hpp"
 #include "TypeRegistryExports.hpp"
+#include <type_traits>
 
 namespace StateEngine::EngineCore::EngineTypeSystem {
     class TypeRegistry {
@@ -44,6 +45,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         }
 
         template <typename T>
+            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T>)
         static inline const TypeInfo& GetRequiredType()
         {
             constexpr std::string_view kTypeName = GetTypeName<T>();
@@ -53,6 +55,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         }
 
         template <typename T>
+            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T>)
         static inline const TypeInfo* TryGetType()
         {
             constexpr std::string_view kTypeName = GetTypeName<T>();
@@ -62,6 +65,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         }
 
         template <typename T>
+            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T>)
         static inline void UnregisterType()
         {
             constexpr std::string_view kTypeName = GetTypeName<T>();
