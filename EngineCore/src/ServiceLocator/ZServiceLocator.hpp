@@ -6,16 +6,16 @@ using StateEngine::EngineCore::DataStructures::ZHashMap;
 using StateEngine::EngineCore::EngineTypeSystem::TypeInfo;
 
 namespace StateEngine::EngineCore::ServiceLocator {
-	class ZServiceLocator {
-	private:
+    class ZServiceLocator {
+      private:
 		static ZHashMap<const TypeInfo*, void*> RegisteredServices;
 		static bool IsSealed;
-	public:
+      public:
 		static void  RegisterService(const TypeInfo* type, void* instance);
 		static void* GetService(const TypeInfo* type);
 		static void  RemoveService(const TypeInfo* type);
 		static inline void SetIsSealed(bool sealed) noexcept {
-			IsSealed = sealed;
-		}
-	};
-}
+            IsSealed = sealed;
+        }
+    };
+}  // namespace StateEngine::EngineCore::ServiceLocator
