@@ -1,23 +1,27 @@
 #pragma once
-#include "EngineCore/DataStructures/ZFunction.hpp"
+#include "EngineCore/DataStructures/ZBuffer.hpp"
 #include "EngineCore/DataStructures/ZString.hpp"
 #include "EnumMember.hpp"
 #include "FieldInfo.hpp"
-#include "MethodInfo.hpp"
-#include "TypeKind.hpp"
 #include <cstdint>
 
-using StateEngine::EngineCore::DataStructures::ZFunction;
-using StateEngine::EngineCore::DataStructures::ZString;
 namespace StateEngine::EngineCore::EngineTypeSystem {
+    enum class TypeKind {
+        Primitive,
+        Struct,
+        Class,
+        Interface,
+        Enum,
+    };
+    using TypeKey = size_t;
     struct TypeInfo {
-        ZString Name {};
-        size_t HashCode {0};
+        DataStructures::ZString Name {};
+        TypeKey HashCode {0};
         size_t Size {1};
         uint32_t Alignment {1};
         TypeKind kind {TypeKind::Primitive};
 
-        using ToStringFunction = ZString(*)(const void* data, const char* format);
+        using ToStringFunction = DataStructures::ZString (*)(const void* data, const char* format);
         ToStringFunction ToString {};
 
         using MoveConstructorFunction = void (*)(void* dstMemory, void* src);
@@ -29,9 +33,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         using DestructorFunction = void (*)(void* obj);
         DestructorFunction Destructor {nullptr};
 
-        ZBuffer<FieldInfo> Fields {};
-        ZBuffer<EnumMember> EnumMembers {};
-
-        TypeInfo() = default;
+        DataStructures::ZBuffer<FieldInfo> Fields {};
+        DataStructures::ZBuffer<EnumMember> EnumMembers {};
     };
 }  // namespace StateEngine::EngineCore::EngineTypeSystem

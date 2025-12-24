@@ -3,9 +3,11 @@
 #include "EngineCore/Hashing/Fnv1aHashProvider.hpp"
 #include "GetCompileTimeNames.hpp"
 #include "HasToStringFunction.hpp"
-#include "TypeInfo.hpp"
 #include "TypeRegistryExports.hpp"
+#include <array>
+#include <cstdint>
 #include <format>
+#include <utility>
 
 namespace StateEngine::EngineCore::EngineTypeSystem {
     template <typename TType, auto... Fields>
@@ -38,12 +40,15 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         };
 
       private:
-        static ZString ToStringImpl(const void* obj, const char* format)
+        static DataStructures::ZString ToStringImpl(const void* obj, const char* format)
         {
             constexpr size_t hashCode = Fnv1aHashProvider::HashString(GetTypeName<TType>());
-            auto& type                = TypeRegistry_GetRequiredType(hashCode);
-            const TType value         = *static_cast<const TType*>(obj);
-            for (auto& enumItem : type.EnumMembers) {
+            auto* type                = TypeRegistry_GetType(hashCode);
+            if (type == nullptr) {
+                return "Unknown";
+            }
+            const TType value = *static_cast<const TType*>(obj);
+            for (auto& enumItem : type->EnumMembers) {
                 if (value == static_cast<TType>(enumItem.NumberValue))
                     return enumItem.StringValue;
             }
@@ -113,7 +118,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         {
             static_cast<TType*>(obj)->~TType();
         }
-        static ZString ToStringImpl(const void* obj, const char* format)
+        static DataStructures::ZString ToStringImpl(const void* obj, const char* format)
         {
             const TType* objPtr = reinterpret_cast<const TType*>(obj);
             if constexpr (HasToStringFunction<TType>)
@@ -200,6 +205,42 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
     template <typename TType>
         requires std::is_fundamental_v<TType>
     struct CompileTimeTypeBuilder<TType> {
+        static DataStructures::ZString ToStringImpl(const void* obj, const char* format)
+        {
+            if constexpr (std::is_void_v<TType>) {
+                return "void";
+            }
+            else {
+                if (!obj)
+                    return "null";
+
+                const TType value = *static_cast<const TType*>(obj);
+
+                if (format == nullptr || *format == '\0') {
+                    if constexpr (std::is_same_v<TType, bool>) {
+                        return value ? "true" : "false";
+                    }
+                    else if constexpr (std::is_same_v<TType, char>) {
+                        std::array<char, 2> buf {value, '\0'};
+                        return buf.data();
+                    }
+                    else {
+                        return std::format("{}", value).c_str();
+                    }
+                }
+
+                std::string pattern;
+                pattern.reserve(std::char_traits<char>::length(format) + 3);
+                pattern.push_back('{');
+                pattern.push_back(':');
+                pattern.append(format);
+                pattern.push_back('}');
+
+                return std::vformat(pattern, std::make_format_args(value)).c_str();
+            }
+        }
+
+      public:
         static consteval auto Build() noexcept
         {
             using MetaType = CompileTimeTypeMeta<0, 0>;
@@ -215,39 +256,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
                 meta.Alignment = alignof(TType);
             }
 
-            meta.ToString = [](const void* obj, const char* format) -> ZString {
-                if constexpr (std::is_void_v<TType>) {
-                    return "void";
-                }
-                else {
-                    if (!obj)
-                        return "null";
-
-                    const TType value = *static_cast<const TType*>(obj);
-
-                    if (format == nullptr || *format == '\0') {
-                        if constexpr (std::is_same_v<TType, bool>) {
-                            return value ? "true" : "false";
-                        }
-                        else if constexpr (std::is_same_v<TType, char>) {
-                            std::array<char, 2> buf {value, '\0'};
-                            return buf.data();
-                        }
-                        else {
-                            return std::format("{}", value).c_str();
-                        }
-                    }
-
-                    std::string pattern;
-                    pattern.reserve(std::char_traits<char>::length(format) + 3);
-                    pattern.push_back('{');
-                    pattern.push_back(':');
-                    pattern.append(format);
-                    pattern.push_back('}');
-
-                    return std::vformat(pattern, std::make_format_args(value)).c_str();
-                }
-            };
+            meta.ToString        = ToStringImpl;
             meta.MoveConstructor = nullptr;
             meta.Destructor      = nullptr;
             meta.CopyConstructor = nullptr;

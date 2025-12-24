@@ -3,9 +3,14 @@
 #include "GetCompileTimeNames.hpp"
 #include "TypeInfo.hpp"
 #include "TypeRegistryExports.hpp"
+#include <cassert>
 #include <type_traits>
 
 namespace StateEngine::EngineCore::EngineTypeSystem {
+    template <typename T>
+    concept TypeRegistryRestrictionConcept =
+        requires { !std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T>; };
+
     class TypeRegistry {
       public:
         template <size_t N, size_t M>
@@ -30,6 +35,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
                 fieldInfo.Type         = nullptr;
                 fieldInfo.TypeHashCode = field.TypeHash;
                 fieldInfo.Offset       = field.Offset;
+                fieldInfo.Type         = &GetRequiredType(field.TypeHash);
                 info.Fields.push_back(std::move(fieldInfo));
             }
 
@@ -45,27 +51,39 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         }
 
         template <typename T>
-            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T>)
+            requires TypeRegistryRestrictionConcept<T>
         static inline const TypeInfo& GetRequiredType()
         {
             constexpr std::string_view kTypeName = GetTypeName<T>();
             constexpr size_t kTypeHash           = Hashing::Fnv1aHashProvider::HashString(kTypeName);
-
-            return TypeRegistry_GetRequiredType(kTypeHash);
+            return GetRequiredType(kTypeHash);
+        }
+        static inline const TypeInfo& GetRequiredType(TypeKey hashCode)
+        {
+            const TypeInfo* typeInfo = TypeRegistry_GetType(hashCode);
+            if (typeInfo == nullptr) {
+                assert(false && "TypeRegistry does not have the requested type. The program will terminate.");
+                std::terminate();
+            }
+            return *typeInfo;
         }
 
         template <typename T>
-            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T>)
+            requires TypeRegistryRestrictionConcept<T>
         static inline const TypeInfo* TryGetType()
         {
             constexpr std::string_view kTypeName = GetTypeName<T>();
             constexpr size_t kTypeHash           = Hashing::Fnv1aHashProvider::HashString(kTypeName);
 
-            return TypeRegistry_TryGetType(kTypeHash);
+            return TypeRegistry_GetType(kTypeHash);
+        }
+        static inline const TypeInfo* TryGetType(TypeKey hashCode)
+        {
+            return TypeRegistry_GetType(hashCode);
         }
 
         template <typename T>
-            requires(!std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T>)
+            requires TypeRegistryRestrictionConcept<T>
         static inline void UnregisterType()
         {
             constexpr std::string_view kTypeName = GetTypeName<T>();

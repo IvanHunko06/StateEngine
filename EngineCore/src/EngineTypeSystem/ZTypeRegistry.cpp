@@ -1,12 +1,16 @@
 #include "ZTypeRegistry.hpp"
+#include "EngineCore/DataStructures/ZHashMap.hpp"
 #include "EngineCore/EngineTypeSystem/CompileTimeTypeBuilder.hpp"
+#include "EngineCore/EngineTypeSystem/TypeInfo.hpp"
 #include "EngineCore/EngineTypeSystem/TypeRegistry.hpp"
 #include "EngineCore/Logging/LoggingMacros.hpp"
 #include <cassert>
+#include <cstdint>
+#include <utility>
 using namespace StateEngine::EngineCore::EngineTypeSystem;
 using namespace StateEngine::EngineCore::DataStructures;
 
-ZHashMap<size_t, TypeInfo> ZTypeRegistry::MapTypes;
+ZHashMap<TypeKey, TypeInfo> ZTypeRegistry::MapTypes;
 bool ZTypeRegistry::IsSealed = false;
 
 bool ZTypeRegistry::RegisterType(TypeInfo&& type)
@@ -23,14 +27,10 @@ bool ZTypeRegistry::RegisterType(TypeInfo&& type)
         return false;
     }
 
-    for (auto& field : type.Fields) {
-        field.Type = &GetRequiredTypeInfo(field.TypeHashCode);
-    }
-
     MapTypes[type.HashCode] = std::move(type);
     return true;
 }
-const TypeInfo* ZTypeRegistry::TryGetTypeInfo(size_t hashCode)
+const TypeInfo* ZTypeRegistry::GetTypeInfo(TypeKey hashCode)
 {
     auto it = MapTypes.find(hashCode);
     if (it == MapTypes.end()) {
@@ -38,17 +38,8 @@ const TypeInfo* ZTypeRegistry::TryGetTypeInfo(size_t hashCode)
     }
     return &it->second;
 }
-const TypeInfo& ZTypeRegistry::GetRequiredTypeInfo(size_t hashCode)
-{
-    auto it = MapTypes.find(hashCode);
-    if (it == MapTypes.end()) {
-        assert(false && "TypeRegistry does not have the requested type. The program will terminate.");
-        std::terminate();
-    }
-    return it->second;
-}
 
-void ZTypeRegistry::RemoveType(size_t hashCode)
+void ZTypeRegistry::UnregisterType(TypeKey hashCode)
 {
     if (IsSealed) {
         assert(!IsSealed && "Deletion is only allowed in the UnregisterTypes function.");

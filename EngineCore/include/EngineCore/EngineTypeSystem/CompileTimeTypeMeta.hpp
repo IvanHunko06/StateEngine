@@ -2,6 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <string_view>
+#include "EngineCore/DataStructures/ZString.hpp"
 
 namespace StateEngine::EngineCore::EngineTypeSystem {
     struct CompileTimeFieldDesc {
@@ -31,7 +32,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         size_t FieldCount {0};
         size_t EnumCount {0};
 
-        ZString (*ToString)(const void* obj, const char* format) {nullptr};
+        DataStructures::ZString (*ToString)(const void* obj, const char* format) {nullptr};
         void (*CopyConstructor)(void* dst, const void* src) {nullptr};
         void (*MoveConstructor)(void* dst, void* src) {nullptr};
         void (*Destructor)(void* obj) {nullptr};
