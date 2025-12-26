@@ -4,11 +4,14 @@
 #include "EngineCore/EngineTypeSystem/TypeInfo.hpp"
 #include "EngineCore/EngineTypeSystem/TypeRegistry.hpp"
 #include "EngineCore/Logging/LoggingMacros.hpp"
+#include "Logging/ZLogger.hpp"
 #include <cassert>
 #include <cstdint>
 #include <utility>
+#include <string>
 using namespace StateEngine::EngineCore::EngineTypeSystem;
 using namespace StateEngine::EngineCore::DataStructures;
+using namespace StateEngine::EngineCore::Logging;
 
 ZHashMap<TypeKey, TypeInfo> ZTypeRegistry::MapTypes;
 bool ZTypeRegistry::IsSealed = false;
@@ -69,4 +72,36 @@ void ZTypeRegistry::RegisterBaseTypes()
 
     TypeRegistry::RegisterType(CompileTimeTypeBuilder<float>::Build(), TypeKind::Primitive);
     TypeRegistry::RegisterType(CompileTimeTypeBuilder<double>::Build(), TypeKind::Primitive);
+}
+
+void ZTypeRegistry::UnregisterBaseTypes() {
+    TypeRegistry::UnregisterType<void>();
+    TypeRegistry::UnregisterType<bool>();
+    TypeRegistry::UnregisterType<char>();
+
+    TypeRegistry::UnregisterType<int8_t>();
+    TypeRegistry::UnregisterType<uint8_t>();
+
+    TypeRegistry::UnregisterType<int16_t>();
+    TypeRegistry::UnregisterType<uint16_t>();
+
+    TypeRegistry::UnregisterType<int32_t>();
+    TypeRegistry::UnregisterType<uint32_t>();
+
+    TypeRegistry::UnregisterType<int64_t>();
+    TypeRegistry::UnregisterType<uint64_t>();
+
+    TypeRegistry::UnregisterType<float>();
+    TypeRegistry::UnregisterType<double>();
+}
+
+void ZTypeRegistry::ÑheckAllTypesRelease() {
+    for (const auto& type : MapTypes) {
+        std::string errorMessage = "A type was found that was not freed: ";
+        errorMessage += type.second.Name.c_str();
+
+        assert(false && "A type was found that was not freed. An exception is possible.");
+        ZLOG_ERROR("ZTypeRegistry") << errorMessage;
+    }
+    ZLogger::FlushMessages();
 }

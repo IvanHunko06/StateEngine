@@ -13,9 +13,11 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         static const TypeInfo* GetTypeInfo(TypeKey hashCode);
         static void UnregisterType(TypeKey hashCode);
         static void RegisterBaseTypes();
+        static void UnregisterBaseTypes();
         static inline void SetIsSealed(bool newValue)
         {
             IsSealed = newValue;
         }
+        static void ÑheckAllTypesRelease();
     };
 }  // namespace StateEngine::EngineCore::EngineTypeSystem
