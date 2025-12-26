@@ -2,6 +2,7 @@
 #include "EngineCore/Logging/LoggingMacros.hpp"
 #include "QueueManagment/QueueFamilyOracle.hpp"
 #include "EngineCore/DataStructures/ZHashSet.hpp"
+#include "EngineCore/EngineTypeSystem/TypeRegistry.hpp"
 #include <assert.h>
 
 using namespace QueueManagment;
@@ -13,7 +14,7 @@ bool ZVulkanRenderDevice::initialize(const ZVulkanInfo& vulkanInfo) {
 	activePhysicalDeviceDesc_ = &vulkanInfo.selectActivePhysicalDevice();
 	ZLOG_INFO("VulkanRenderModule") << "Active Vulkan Device: " << activePhysicalDeviceDesc_->deviceIndex;
 	allocationCallbacks_ = &vulkanInfo.getAllocationCallbacks();
-	vkResultTypeInfo_ = GET_TYPE_INFO("VulkanRenderModule::VkResult");
+    vkResultTypeInfo_    = &TypeRegistry::GetRequiredType<VkResult>();
 
 	if (!createLogicalDevice())
 		return false;
@@ -66,7 +67,7 @@ bool ZVulkanRenderDevice::createLogicalDevice() {
 	VkResult result = vkCreateDevice(activePhysicalDeviceDesc_->physicalDevice, &deviceCreateInfo, allocationCallbacks_, &logicalDevice_);
 	if (result != VK_SUCCESS) {
 		if (vkResultTypeInfo_)
-			ZLOG_ERROR("VulkanRenderModule") << "Failed to create vulkan device: " << vkResultTypeInfo_->toString(TypeInstance(&result, vkResultTypeInfo_), nullptr).c_str();
+			ZLOG_ERROR("VulkanRenderModule") << "Failed to create vulkan device: " << vkResultTypeInfo_->ToString(&result, nullptr).c_str();
 		
 		return false;
 	}
@@ -156,7 +157,7 @@ VkFence ZVulkanRenderDevice::createFence(const char* fenceName) {
 	VkFence fence;
 	VkResult res = vkCreateFence(logicalDevice_, &createInfo, allocationCallbacks_, &fence);
 	if (res != VK_SUCCESS) {
-		ZLOG_WARN("VulkanRenderModule") << "Failed to create fence '" << fenceName << "': " << vkResultTypeInfo_->toString(TypeInstance(&res, vkResultTypeInfo_), nullptr).c_str();
+		ZLOG_WARN("VulkanRenderModule") << "Failed to create fence '" << fenceName << "': " << vkResultTypeInfo_->ToString(&res, nullptr).c_str();
 		return VK_NULL_HANDLE;
 	}
 #ifdef _DEBUG
@@ -170,7 +171,7 @@ VkFence ZVulkanRenderDevice::createFence(const char* fenceName) {
 	};
 	res = vkSetDebugUtilsObjectNameEXT(logicalDevice_, &objecctName);
 	if (res != VK_SUCCESS) {
-		ZLOG_WARN("VulkanRenderModule") << "Failed to set object name '" << fenceName << "': " << vkResultTypeInfo_->toString(TypeInstance(&res, vkResultTypeInfo_), nullptr).c_str();
+		ZLOG_WARN("VulkanRenderModule") << "Failed to set object name '" << fenceName << "': " << vkResultTypeInfo_->ToString(&res, nullptr).c_str();
 	}
 #endif
 	return fence;
@@ -185,7 +186,7 @@ VkSemaphore ZVulkanRenderDevice::createSemaphore(const char* semaphoreName) {
 	VkSemaphore semaphore;
 	VkResult res = vkCreateSemaphore(logicalDevice_, &createInfo, allocationCallbacks_, &semaphore);
 	if (res != VK_SUCCESS) {
-		ZLOG_WARN("VulkanRenderModule") << "Failed to create semaphore '" << semaphoreName << "': " << vkResultTypeInfo_->toString(TypeInstance(&res, vkResultTypeInfo_), nullptr).c_str();
+		ZLOG_WARN("VulkanRenderModule") << "Failed to create semaphore '" << semaphoreName << "': " << vkResultTypeInfo_->ToString(&res, nullptr).c_str();
 		return VK_NULL_HANDLE;
 	}
 #ifdef _DEBUG
@@ -199,7 +200,7 @@ VkSemaphore ZVulkanRenderDevice::createSemaphore(const char* semaphoreName) {
 	};
 	res = vkSetDebugUtilsObjectNameEXT(logicalDevice_, &objecctName);
 	if (res != VK_SUCCESS) {
-		ZLOG_WARN("VulkanRenderModule") << "Failed to set object name '" << semaphoreName << "': " << vkResultTypeInfo_->toString(TypeInstance(&res, vkResultTypeInfo_), nullptr).c_str();
+		ZLOG_WARN("VulkanRenderModule") << "Failed to set object name '" << semaphoreName << "': " << vkResultTypeInfo_->ToString(&res, nullptr).c_str();
 	}
 #endif
 	return semaphore;

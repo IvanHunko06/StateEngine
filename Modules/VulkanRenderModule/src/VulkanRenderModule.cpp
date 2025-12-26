@@ -1,140 +1,90 @@
 #include "VulkanRenderModule/VulkanRenderModule.hpp"
-#include "EngineCore/Logging/LoggingMacros.hpp"
-#include "EngineCore/EngineTypeSystem/TypeRegistryExports.hpp"
+#include "EngineCore/EngineTypeSystem/CompileTimeTypeBuilder.hpp"
 #include "EngineCore/EngineTypeSystem/TypeInfo.hpp"
-#include "EngineCore/EngineTypeSystem/TypeRegistryMacros.hpp"
+#include "EngineCore/EngineTypeSystem/TypeRegistry.hpp"
+#include "EngineCore/Logging/LoggingMacros.hpp"
 #include "VulkanRenderModule/Configurations/IVulkanSurfaceProvider.hpp"
-#include "VulkanRenderModule/Configurations/VulkanCreateInstanceConfiguration.hpp"
 #include "VulkanRenderModule/Configurations/OverrideActiveVulkanDevice.hpp"
+#include "VulkanRenderModule/Configurations/VulkanCreateInstanceConfiguration.hpp"
 
 using namespace StateEngine::VulkanRenderModule;
-using StateEngine::EngineCore::EngineTypeSystem::TypeInfo;
-using StateEngine::EngineCore::EngineTypeSystem::EnumMember;
-using StateEngine::EngineCore::EngineTypeSystem::TypeRegistryCppLayer;
+using namespace StateEngine::EngineCore::EngineTypeSystem;
 
-
-void VulkanRenderModule::OnLoad() {
-	if (!vulkanInfo_.initialize()) {
-		ZLOG_ERROR("VulkanRenderModule") << "Failed to initialize Vulkan Info!";
-		return;
-	}
-	if (!vulkanRenderDevice_.initialize(vulkanInfo_)) {
-		ZLOG_ERROR("VulkanRenderModule") << "Failed to initialize Vulkan Render Device!";
-		return;
-	}
-
+void VulkanRenderModule::OnLoad()
+{
+    if (!vulkanInfo_.initialize()) {
+        ZLOG_ERROR("VulkanRenderModule") << "Failed to initialize Vulkan Info!";
+        return;
+    }
+    if (!vulkanRenderDevice_.initialize(vulkanInfo_)) {
+        ZLOG_ERROR("VulkanRenderModule") << "Failed to initialize Vulkan Render Device!";
+        return;
+    }
 }
-void VulkanRenderModule::OnUnload() {
-	vulkanRenderDevice_.shutdown();
-	vulkanInfo_.shutdown();
+void VulkanRenderModule::OnUnload()
+{
+    vulkanRenderDevice_.shutdown();
+    vulkanInfo_.shutdown();
 }
 
-void VulkanRenderModule::RegisterTypes(){
-    BEGIN_REFLECT_ENUM("VulkanRenderModule::VkResult", VkResult)
+void VulkanRenderModule::RegisterTypes()
+{
+    using VkResultTypeBuild = CompileTimeTypeBuilder<VkResult>::AutoEnum<-13, 5>::AutoEnum<-1000023005, -1000023000>::
+        AutoEnum<1000268000, 1000268003>::EnumValues<
+            // --- Validation & Memory ---
+            VK_ERROR_VALIDATION_FAILED, VK_ERROR_OUT_OF_POOL_MEMORY, VK_ERROR_FRAGMENTATION, VK_ERROR_NOT_PERMITTED,
 
-		// --- Positive results ---
-		REFLECT_ENUM_VALUE("VK_SUCCESS", VkResult::VK_SUCCESS)
-		REFLECT_ENUM_VALUE("VK_NOT_READY", VkResult::VK_NOT_READY)
-		REFLECT_ENUM_VALUE("VK_TIMEOUT", VkResult::VK_TIMEOUT)
-		REFLECT_ENUM_VALUE("VK_EVENT_SET", VkResult::VK_EVENT_SET)
-		REFLECT_ENUM_VALUE("VK_EVENT_RESET", VkResult::VK_EVENT_RESET)
-		REFLECT_ENUM_VALUE("VK_INCOMPLETE", VkResult::VK_INCOMPLETE)
+            // --- External Memory & Handles ---
+            VK_ERROR_INVALID_EXTERNAL_HANDLE, VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS,
 
-		// --- Error results ---
-		REFLECT_ENUM_VALUE("VK_ERROR_OUT_OF_HOST_MEMORY", VkResult::VK_ERROR_OUT_OF_HOST_MEMORY)
-		REFLECT_ENUM_VALUE("VK_ERROR_OUT_OF_DEVICE_MEMORY", VkResult::VK_ERROR_OUT_OF_DEVICE_MEMORY)
-		REFLECT_ENUM_VALUE("VK_ERROR_INITIALIZATION_FAILED", VkResult::VK_ERROR_INITIALIZATION_FAILED)
-		REFLECT_ENUM_VALUE("VK_ERROR_DEVICE_LOST", VkResult::VK_ERROR_DEVICE_LOST)
-		REFLECT_ENUM_VALUE("VK_ERROR_MEMORY_MAP_FAILED", VkResult::VK_ERROR_MEMORY_MAP_FAILED)
-		REFLECT_ENUM_VALUE("VK_ERROR_LAYER_NOT_PRESENT", VkResult::VK_ERROR_LAYER_NOT_PRESENT)
-		REFLECT_ENUM_VALUE("VK_ERROR_EXTENSION_NOT_PRESENT", VkResult::VK_ERROR_EXTENSION_NOT_PRESENT)
-		REFLECT_ENUM_VALUE("VK_ERROR_FEATURE_NOT_PRESENT", VkResult::VK_ERROR_FEATURE_NOT_PRESENT)
-		REFLECT_ENUM_VALUE("VK_ERROR_INCOMPATIBLE_DRIVER", VkResult::VK_ERROR_INCOMPATIBLE_DRIVER)
-		REFLECT_ENUM_VALUE("VK_ERROR_TOO_MANY_OBJECTS", VkResult::VK_ERROR_TOO_MANY_OBJECTS)
-		REFLECT_ENUM_VALUE("VK_ERROR_FORMAT_NOT_SUPPORTED", VkResult::VK_ERROR_FORMAT_NOT_SUPPORTED)
-		REFLECT_ENUM_VALUE("VK_ERROR_FRAGMENTED_POOL", VkResult::VK_ERROR_FRAGMENTED_POOL)
-		REFLECT_ENUM_VALUE("VK_ERROR_UNKNOWN", VkResult::VK_ERROR_UNKNOWN)
+            // --- Surface & Swapchain (KHR) ---
+            VK_ERROR_SURFACE_LOST_KHR, VK_ERROR_NATIVE_WINDOW_IN_USE_KHR, VK_SUBOPTIMAL_KHR, VK_ERROR_OUT_OF_DATE_KHR,
+            VK_ERROR_INCOMPATIBLE_DISPLAY_KHR, VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR,
 
+            // --- Pipelines & Shaders ---
+            VK_PIPELINE_COMPILE_REQUIRED, VK_ERROR_INVALID_SHADER_NV, VK_INCOMPATIBLE_SHADER_BINARY_EXT,
+            VK_PIPELINE_BINARY_MISSING_KHR, VK_ERROR_NOT_ENOUGH_SPACE_KHR,
 
-		REFLECT_ENUM_VALUE("VK_ERROR_OUT_OF_POOL_MEMORY", VkResult::VK_ERROR_OUT_OF_POOL_MEMORY)
+            // --- Other Extensions ---
+            VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT, VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT,
+            VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR, VK_ERROR_COMPRESSION_EXHAUSTED_EXT>;
 
-		REFLECT_ENUM_VALUE("VK_ERROR_INVALID_EXTERNAL_HANDLE", VkResult::VK_ERROR_INVALID_EXTERNAL_HANDLE)
+    TypeRegistry::RegisterType(VkResultTypeBuild::Build(), TypeKind::Enum);
 
-		REFLECT_ENUM_VALUE("VK_ERROR_FRAGMENTATION", VkResult::VK_ERROR_FRAGMENTATION)
+    TypeRegistry::RegisterType(CompileTimeTypeBuilder<VkSystemAllocationScope>::AutoEnum<0, 5>::Build(),
+                               TypeKind::Enum);
 
-		REFLECT_ENUM_VALUE("VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS", VkResult::VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS)
+    TypeRegistry::RegisterType(CompileTimeTypeBuilder<IVulkanSurfaceProvider>::Build(), TypeKind::Interface);
 
-		// --- Swapchain ---
-		REFLECT_ENUM_VALUE("VK_ERROR_SURFACE_LOST_KHR", VkResult::VK_ERROR_SURFACE_LOST_KHR)
-		REFLECT_ENUM_VALUE("VK_ERROR_NATIVE_WINDOW_IN_USE_KHR", VkResult::VK_ERROR_NATIVE_WINDOW_IN_USE_KHR)
-		REFLECT_ENUM_VALUE("VK_SUBOPTIMAL_KHR", VkResult::VK_SUBOPTIMAL_KHR)
-		REFLECT_ENUM_VALUE("VK_ERROR_OUT_OF_DATE_KHR", VkResult::VK_ERROR_OUT_OF_DATE_KHR)
+    TypeRegistry::RegisterType(CompileTimeTypeBuilder<VulkanCreateInstanceConfiguration>::Build(), TypeKind::Struct);
 
-		// --- Display ---
-		REFLECT_ENUM_VALUE("VK_ERROR_INCOMPATIBLE_DISPLAY_KHR", VkResult::VK_ERROR_INCOMPATIBLE_DISPLAY_KHR)
+    TypeRegistry::RegisterType(CompileTimeTypeBuilder<OverrideActiveVulkanDevice>::Build(), TypeKind::Struct);
 
-		// --- Debugging ---
-		REFLECT_ENUM_VALUE("VK_ERROR_VALIDATION_FAILED_EXT", VkResult::VK_ERROR_VALIDATION_FAILED_EXT)
+    using VkPresentModeTypeBuilder = CompileTimeTypeBuilder<VkPresentModeKHR>::AutoEnum<0, 5>::EnumValues<
+        VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR, VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR,
+        VK_PRESENT_MODE_FIFO_LATEST_READY_KHR>;
 
-		// --- Other common ones ---
-		REFLECT_ENUM_VALUE("VK_ERROR_INVALID_SHADER_NV", VkResult::VK_ERROR_INVALID_SHADER_NV)
-		REFLECT_ENUM_VALUE("VK_ERROR_NOT_PERMITTED_KHR", VkResult::VK_ERROR_NOT_PERMITTED_KHR)
-		REFLECT_ENUM_VALUE("VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT", VkResult::VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT)
+    TypeRegistry::RegisterType(VkPresentModeTypeBuilder::Build(), TypeKind::Enum);
 
-		// --- Pipeline compile required ---
-		REFLECT_ENUM_VALUE("VK_PIPELINE_COMPILE_REQUIRED_EXT", VkResult::VK_PIPELINE_COMPILE_REQUIRED_EXT)
+    TypeRegistry::RegisterType(CompileTimeTypeBuilder<VkFormat>::AutoEnum<0, 124>::Build(), TypeKind::Enum);
 
-    END_REFLECT;
-
-	BEGIN_REFLECT_ENUM("VulkanRenderModule::VkSystemAllocationScope", VkSystemAllocationScope)
-		REFLECT_ENUM_VALUE("VK_SYSTEM_ALLOCATION_SCOPE_COMMAND", VkSystemAllocationScope::VK_SYSTEM_ALLOCATION_SCOPE_COMMAND)
-		REFLECT_ENUM_VALUE("VK_SYSTEM_ALLOCATION_SCOPE_OBJECT", VkSystemAllocationScope::VK_SYSTEM_ALLOCATION_SCOPE_OBJECT)
-		REFLECT_ENUM_VALUE("VK_SYSTEM_ALLOCATION_SCOPE_CACHE", VkSystemAllocationScope::VK_SYSTEM_ALLOCATION_SCOPE_CACHE)
-		REFLECT_ENUM_VALUE("VK_SYSTEM_ALLOCATION_SCOPE_DEVICE", VkSystemAllocationScope::VK_SYSTEM_ALLOCATION_SCOPE_DEVICE)
-		REFLECT_ENUM_VALUE("VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE", VkSystemAllocationScope::VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE)
-	END_REFLECT
-
-	REGISTER_INTERFACE("VulkanRenderModule::IVulkanSurfaceProvider", IVulkanSurfaceProvider);
-
-	BEGIN_REFLECT_STRUCT("VulkanRenderModule::VulkanCreateInstanceConfiguration", VulkanCreateInstanceConfiguration)
-	END_REFLECT
-
-	BEGIN_REFLECT_STRUCT("VulkanRenderModule::OverrideActiveVulkanDevice", OverrideActiveVulkanDevice)
-	END_REFLECT
-
-	BEGIN_REFLECT_ENUM("VulkanRenderModule::VkPresentModeKHR", VkPresentModeKHR)
-		REFLECT_ENUM_VALUE("VK_PRESENT_MODE_IMMEDIATE_KHR", VkPresentModeKHR::VK_PRESENT_MODE_IMMEDIATE_KHR)
-		REFLECT_ENUM_VALUE("VK_PRESENT_MODE_MAILBOX_KHR", VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR)
-		REFLECT_ENUM_VALUE("VK_PRESENT_MODE_FIFO_KHR", VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR)
-		REFLECT_ENUM_VALUE("VK_PRESENT_MODE_FIFO_RELAXED_KHR", VkPresentModeKHR::VK_PRESENT_MODE_FIFO_RELAXED_KHR)
-		REFLECT_ENUM_VALUE("VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR", VkPresentModeKHR::VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR)
-		REFLECT_ENUM_VALUE("VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR", VkPresentModeKHR::VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR)
-		REFLECT_ENUM_VALUE("VK_PRESENT_MODE_FIFO_LATEST_READY_KHR", VkPresentModeKHR::VK_PRESENT_MODE_FIFO_LATEST_READY_KHR)
-	END_REFLECT
-
-	BEGIN_REFLECT_ENUM("VulkanRenderModule::VkFormat", VkFormat)
-		REFLECT_ENUM_VALUE("VK_FORMAT_UNDEFINED", VkFormat::VK_FORMAT_UNDEFINED)
-		REFLECT_ENUM_VALUE("VK_FORMAT_R8G8B8A8_UNORM", VkFormat::VK_FORMAT_R8G8B8A8_UNORM)
-		REFLECT_ENUM_VALUE("VK_FORMAT_R8G8B8A8_SRGB", VkFormat::VK_FORMAT_R8G8B8A8_SRGB)
-		REFLECT_ENUM_VALUE("VK_FORMAT_B8G8R8A8_UNORM", VkFormat::VK_FORMAT_B8G8R8A8_UNORM)
-		REFLECT_ENUM_VALUE("VK_FORMAT_B8G8R8A8_SRGB", VkFormat::VK_FORMAT_B8G8R8A8_SRGB)
-	END_REFLECT
-
-	BEGIN_REFLECT_ENUM("VulkanRenderModule::VkColorSpaceKHR", VkColorSpaceKHR)
-		REFLECT_ENUM_VALUE("VK_COLOR_SPACE_SRGB_NONLINEAR_KHR", VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-	END_REFLECT
-
-	BEGIN_REFLECT_STRUCT("VulkanRenderModule::VkSurfaceFormatKHR", VkSurfaceFormatKHR)
-		REFLECT_FIELD(format, "VulkanRenderModule::VkFormat")
-		REFLECT_FIELD(colorSpace, "VulkanRenderModule::VkColorSpaceKHR")
-	END_REFLECT
+    TypeRegistry::RegisterType(CompileTimeTypeBuilder<VkColorSpaceKHR>::AutoEnum<1000104001, 1000104015>::EnumValue<
+                                   VK_COLOR_SPACE_SRGB_NONLINEAR_KHR>::Build(),
+                               TypeKind::Enum);
+    
+    TypeRegistry::RegisterType(CompileTimeTypeBuilder<VkSurfaceFormatKHR>::Field<
+                                   &VkSurfaceFormatKHR::colorSpace>::Field<&VkSurfaceFormatKHR::format>::Build(),
+                               TypeKind::Struct);
 }
-void VulkanRenderModule::UnregisterTypes() {
-	UNREGISTER_TYPE("VulkanRenderModule::VkResult");
-	UNREGISTER_TYPE("VulkanRenderModule::VkSystemAllocationScope");
-	UNREGISTER_TYPE("VulkanRenderModule::IVulkanSurfaceProvider");
-	UNREGISTER_TYPE("VulkanRenderModule::VkPresentModeKHR");
-	UNREGISTER_TYPE("VulkanRenderModule::VkSurfaceFormatKHR");
-	UNREGISTER_TYPE("VulkanRenderModule::VkFormat");
-	UNREGISTER_TYPE("VulkanRenderModule::VkColorSpaceKHR");
+void VulkanRenderModule::UnregisterTypes()
+{
+    TypeRegistry::UnregisterType<VkResult>();
+    TypeRegistry::UnregisterType<VkSystemAllocationScope>();
+    TypeRegistry::UnregisterType<IVulkanSurfaceProvider>();
+    TypeRegistry::UnregisterType<VkPresentModeKHR>();
+    TypeRegistry::UnregisterType<VkSurfaceFormatKHR>();
+    TypeRegistry::UnregisterType<VkFormat>();
+    TypeRegistry::UnregisterType<VkColorSpaceKHR>();
+    TypeRegistry::UnregisterType<OverrideActiveVulkanDevice>();
+    TypeRegistry::UnregisterType<VulkanCreateInstanceConfiguration>();
 }

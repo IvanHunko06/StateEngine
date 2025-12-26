@@ -1,6 +1,7 @@
 #pragma once
 #include "EngineCore/DataStructures/ZHashMap.hpp"
 #include "EngineCore/DataStructures/ZString.hpp"
+#include "EngineCore/DataStructures/ZBuffer.hpp"
 #include "EngineCore/SmartPointers/ZUniquePointer.hpp"
 #include "EngineCore/JobSystem/JobHandle.hpp"
 #include "EngineScene.hpp"
@@ -26,8 +27,8 @@ namespace StateEngine::EngineCore::SceneManagment {
 
 	private:
 		static ZHashMap<ZString, ZUniquePointer<EngineScene>> loadedScenes_;
-		static ZBuffer<ActiveSceneEntry> activeScenes_;
-		static ZBuffer<LoadingSceneEntry> asyncLoadingScenes_;
+		static DataStructures::ZBuffer<ActiveSceneEntry> activeScenes_;
+		static DataStructures::ZBuffer<LoadingSceneEntry> asyncLoadingScenes_;
 		static ZHashMap<ZString, ISceneLoader*> sceneLoaders;
 
 	public:

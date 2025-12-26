@@ -1,13 +1,14 @@
 #include "EngineApplication.hpp"
+#include "EngineCore/BaseEngineEvents/ShutdownEngineEvent.hpp"
 #include "EngineCore/Logging/LoggingMacros.hpp"
 #include "Logging/ZLogger.hpp"
 #include "EngineCore/ConfigurationConsumers/IWindowConfigurationConsumer.hpp"
-#include "EngineCore/EngineTypeSystem/TypeRegistryMacros.hpp"
 #include "EngineTypeSystem/ZTypeRegistry.hpp"
 #include "EventBus/ZEventBus.hpp"
 #include "ServiceLocator/ZServiceLocator.hpp"
 #include "Threading/CpuCoresBinding.hpp"
 #include "JobSystem/ZJobSystem.hpp"
+#include "EngineCore/EventBus/EventBusWrapper.hpp"
 #include <cassert>
 #include <chrono>
 #include <atomic>
@@ -24,15 +25,18 @@ using StateEngine::EngineCore::JobSystem::ZJobSystem;
 using namespace StateEngine::EngineCore::ApplicationConfigurations;
 using namespace StateEngine::EngineCore::ApplicationConfigurations::Consumers;
 using namespace StateEngine::EngineCore::EngineTypeSystem;
+using namespace StateEngine::EngineCore::EventBus;
+using namespace StateEngine::EngineCore::BaseEngineEvents;
 
-ZBuffer<EngineApplication::LoadedModuleContext> EngineApplication::loadedModules_;
-ZBuffer<IEngineSystem*> EngineApplication::inputPhaseSystems_;
-ZBuffer<IEngineSystem*> EngineApplication::preLogicPhaseSystems_;
-ZBuffer<IEngineSystem*> EngineApplication::physicsPhaseSystems_;
-ZBuffer<IEngineSystem*> EngineApplication::postLogicPhaseSystems_;
-ZBuffer<IEngineSystem*> EngineApplication::renderPhaseSystems_;
+ZBuffer<EngineApplication::LoadedModuleContext> EngineApplication::LoadedModules;
+ZBuffer<IEngineSystem*> EngineApplication::InputPhaseSystems;
+ZBuffer<IEngineSystem*> EngineApplication::RenderPhaseSystems;
+ZEventBus EngineApplication::GlobalEventBus = ZEventBus(2 * 1024 * 1024);
 
 void EngineApplication::Run(IApplication* app) {
+    ZTypeRegistry::RegisterBaseTypes();
+    ZEventBus::RegisterBaseEventsTypes();
+
 	// 1. Configuration
 	EngineBuilder builder;
 	app->configureEngine(builder);
@@ -57,7 +61,7 @@ void EngineApplication::Run(IApplication* app) {
 		instance->RegisterTypes();
 		ZLOG_DEBUG("EngineCore") << "registered types from module: " << instance->GetName();
 	}
-	ZTypeRegistry::SetRecordingAllowed(false);
+    ZTypeRegistry::SetIsSealed(true);
 	
 
 	if (config.dependencyRegistrationCallback) {
@@ -69,7 +73,7 @@ void EngineApplication::Run(IApplication* app) {
 	}
 	ZServiceLocator::SetIsSealed(true);
 
-	for (auto& loadedModule : loadedModules_) {
+	for (auto& loadedModule : LoadedModules) {
 		loadedModule.instance->OnLoad();
 		applyConfigurations(loadedModule.instance, config);
 		ZLOG_DEBUG("EngineCore") << "module loaded: " << loadedModule.instance->GetName();
@@ -80,52 +84,47 @@ void EngineApplication::Run(IApplication* app) {
 	bool isRunning{ true };
 	auto lastTime = std::chrono::high_resolution_clock::now();
 
-	ZEventBus::Subscribe(GET_TYPE_INFO("ShutdownEngineEvent"),[&isRunning](void* userData)->bool {
-		isRunning = false;
-		return false;
-	});
+    EventBusWrapper::Subscribe<ShutdownEngineEvent>([&isRunning](const ShutdownEngineEvent* eventData) {
+        isRunning = false;
+        return false;
+    });
 	while (isRunning){
 		auto curentTime = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<float> duration = curentTime - lastTime;
-		float deltaTime = duration.count();
+		const std::chrono::duration<float> duration = curentTime - lastTime;
+		const float deltaTime = duration.count();
 		lastTime = curentTime;
 
-		for (auto& system : inputPhaseSystems_) {
+		for (auto& system : InputPhaseSystems) {
 			system->UpdateSystem(deltaTime);
 		}
-		ZEventBus::FlushEvents();
-		if (!isRunning) break;
+        GlobalEventBus.FlushEvents();
+		if (!isRunning) {
+            break;
+		}
 
-		for (auto& system : preLogicPhaseSystems_) {
-			system->UpdateSystem(deltaTime);
-		}
-		for (auto& system : physicsPhaseSystems_) {
-			system->UpdateSystem(deltaTime);
-		}
-		for (auto& system : postLogicPhaseSystems_) {
-			system->UpdateSystem(deltaTime);
-		}
-		for (auto& system : renderPhaseSystems_) {
+		for (auto& system : RenderPhaseSystems) {
 			system->UpdateSystem(deltaTime);
 		}
 		ZLogger::FlushMessages();
 	}
 
 	// 4. Unload modules
-	ZTypeRegistry::SetRecordingAllowed(true);
-	for (auto& engineModuleContext : loadedModules_) {
+    ZTypeRegistry::SetIsSealed(false);
+	for (auto& engineModuleContext : LoadedModules) {
 		engineModuleContext.instance->UnregisterTypes();
 		engineModuleContext.instance->OnUnload();
 #ifdef _WIN32
 		FreeLibrary(engineModuleContext.windowsHandle);
 #endif
 	}
-	ZTypeRegistry::SetRecordingAllowed(false);
 
 	// 5. Call onShutdown event for application
 	app->onShutdown();
 	
 	ZJobSystem::Shutdown();
+    ZEventBus::UnregisterBaseEventsTypes();
+    ZTypeRegistry::UnregisterBaseTypes();
+    ZTypeRegistry::ÑheckAllTypesRelease();
 }
 
 IModule* EngineApplication::loadModule(const ZString& path) {
@@ -158,7 +157,7 @@ IModule* EngineApplication::loadModule(const ZString& path) {
 		return nullptr;
 	}
 
-	loadedModules_.push_back(context);
+	LoadedModules.push_back(context);
 
 	return context.instance;
 }
@@ -174,19 +173,10 @@ void EngineApplication::RegisterEngineSystem(EngineUpdatePhase phase, IEngineSys
 	switch (phase)
 	{
 	case StateEngine::EngineCore::EngineUpdatePhase::Input:
-		inputPhaseSystems_.push_back(system);
-		break;
-	case StateEngine::EngineCore::EngineUpdatePhase::PreLogic:
-		preLogicPhaseSystems_.push_back(system);
-		break;
-	case StateEngine::EngineCore::EngineUpdatePhase::Physics:
-		physicsPhaseSystems_.push_back(system);
-		break;
-	case StateEngine::EngineCore::EngineUpdatePhase::PostLogic:
-		postLogicPhaseSystems_.push_back(system);
+		InputPhaseSystems.push_back(system);
 		break;
 	case StateEngine::EngineCore::EngineUpdatePhase::Render:
-		renderPhaseSystems_.push_back(system);
+		RenderPhaseSystems.push_back(system);
 		break;
 	default:
 		break;
