@@ -2,7 +2,8 @@
 #include "EngineApplication.hpp"
 #include "EngineCore/Logging/LoggingMacros.hpp"
 
-using StateEngine::EngineCore::EngineApplication;
+using namespace StateEngine::EngineCore::ApplicationConfigurations;
+using namespace StateEngine::EngineCore;
 extern "C" {
 	ENGINE_CORE_API void Application_Run(IApplication* app) {
 		static bool isRunning = false;

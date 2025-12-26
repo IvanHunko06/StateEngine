@@ -1,7 +1,6 @@
 #pragma once
 #include "EngineCore/DataStructures/ZBuffer.hpp"
 #include "EngineCore/Logging/LoggingMacros.hpp"
-#include "EngineCore/EngineTypeSystem/TypeRegistryMacros.hpp"
 #include "Volk/volk.h"
 #include <optional>
 
@@ -30,7 +29,7 @@ namespace QueueManagment {
 			return std::nullopt;
 		}
 		inline static std::optional<uint32_t> findPresentFamily(const ZBuffer<VkQueueFamilyProperties>& families, const VkPhysicalDevice& device, const VkSurfaceKHR& surface) {
-			const TypeInfo* vkResultTypeInfo = GET_TYPE_INFO("VulkanRenderModule::VkResult");
+            const TypeInfo* vkResultTypeInfo = nullptr;  // GET_TYPE_INFO("VulkanRenderModule::VkResult");
 			for (uint32_t i = 0; i < families.size(); ++i) {
 				VkBool32 supported;
 				VkResult result = vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &supported);

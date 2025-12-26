@@ -29,18 +29,13 @@ namespace StateEngine::EngineCore::StringCollection {
 		static ZHashMap<size_t, StringRecordsBuffer> hashToStringMaps[kStringCollectionHashTablesCount];
 	
 	public:
-		inline static void init() {
+		inline static void Init() {
 			for (size_t i = 0; i < kStringCollectionHashTablesCount; ++i) {
 				hashToStringMaps[i].reserve(kDefaultStringCollectionInitialTableSize);
 			}
 		}
-		inline static void release() {
-			for (size_t i = 0; i < kStringCollectionHashTablesCount; ++i) {
-				//hashToStringMaps[i].~ZHashMap();
-			}
-		}
-		static const char* getOrCreateSharedString(const char* str);
-		inline static void incrementRefCount(const char* str) {
+		static const char* GetOrCreateSharedString(const char* str);
+		inline static void IncrementRefCount(const char* str) {
 			StringRecordHeader* hdr = reinterpret_cast<StringRecordHeader*>(const_cast<char*>(str)) - 1;
 			if (hdr->magic != kStringRecordHeaderMagic) {
 				assert("ZStringCollection::incrementRefCount - corrupted string header magic");
@@ -48,7 +43,7 @@ namespace StateEngine::EngineCore::StringCollection {
 			}
 			hdr->refCount.fetch_add(1, std::memory_order_relaxed);
 		}
-		inline static void decrementRefCount(const char* str) {
+		inline static void DecrementRefCount(const char* str) {
 			StringRecordHeader* hdr = reinterpret_cast<StringRecordHeader*>(const_cast<char*>(str)) - 1;
 			if (hdr->magic != kStringRecordHeaderMagic) {
 				assert("ZStringCollection::decrementRefCount - corrupted string header magic");
@@ -56,8 +51,8 @@ namespace StateEngine::EngineCore::StringCollection {
 			}
 			uint32_t oldValue = hdr->refCount.fetch_sub(1, std::memory_order_relaxed);
 			if (oldValue == 1)
-				removeStringRecord(hdr);
+				RemoveStringRecord(hdr);
 		}
-		static void removeStringRecord(StringRecordHeader* hdr);
+		static void RemoveStringRecord(StringRecordHeader* hdr);
 	};
 }

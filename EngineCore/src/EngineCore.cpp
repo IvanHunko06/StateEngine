@@ -26,9 +26,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 		mi_register_output(MimallocOutput, nullptr);
 		mi_option_enable(mi_option_show_stats);
 #endif
-		ZStringCollection::init();
-		ZTypeRegistry::RegisterBaseTypes();
-		ZEventBus::RegisterBaseEvents();
+		ZStringCollection::Init();
 	}
 	return TRUE;
 }

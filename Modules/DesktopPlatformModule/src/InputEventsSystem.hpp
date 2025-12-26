@@ -1,5 +1,5 @@
 #pragma once
-#include "EngineCore/IUpdatableSystem.hpp"
+#include "EngineCore/IEngineSystem.hpp"
 #include "EngineCore/Threading/SPSCQueue.hpp"
 #include "NativeWindow.hpp"
 using StateEngine::EngineCore::IEngineSystem;

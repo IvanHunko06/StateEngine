@@ -5,12 +5,12 @@ using namespace StateEngine::EngineCore::StringCollection;
 
 extern "C" {
 	ENGINE_CORE_API const char* StringCollection_GetOrCreateSharedString(const char* str) {
-		return ZStringCollection::getOrCreateSharedString(str);
+		return ZStringCollection::GetOrCreateSharedString(str);
 	}
 	ENGINE_CORE_API void StringCollection_IncrementRefCount(const char* str) {
-		ZStringCollection::incrementRefCount(str);
+		ZStringCollection::IncrementRefCount(str);
 	}
 	ENGINE_CORE_API void StringCollection_DecrementRefCount(const char* str) {
-		ZStringCollection::decrementRefCount(str);
+		ZStringCollection::DecrementRefCount(str);
 	}
 }

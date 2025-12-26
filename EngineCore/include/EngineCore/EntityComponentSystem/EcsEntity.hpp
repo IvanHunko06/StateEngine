@@ -8,10 +8,10 @@ namespace StateEngine::EngineCore::EntityComponentSystem {
 		uint32_t generationId{ 0 };
 
 		inline size_t Hash() const noexcept{
-			size_t entityIdHash = Fnv1aHashProvider::hashBytes(&entityId, sizeof(entityId));
-			size_t generationIdHash = Fnv1aHashProvider::hashBytes(&generationId, sizeof(generationId));
+			size_t entityIdHash = Fnv1aHashProvider::HashBytes(&entityId, sizeof(entityId));
+			size_t generationIdHash = Fnv1aHashProvider::HashBytes(&generationId, sizeof(generationId));
 			
-			return Fnv1aHashProvider::combineHash(entityIdHash, generationIdHash);
+			return Fnv1aHashProvider::CombineHash(entityIdHash, generationIdHash);
 		}
 
 		inline bool operator==(const EcsEntity& other) const noexcept{

@@ -1,7 +1,7 @@
 #include "ZArchetypeComponentRegistry.hpp"
 #include "EngineCore/EngineTypeSystem/TypeRegistryExports.hpp"
 #include "EngineCore/Logging/LoggingMacros.hpp"
-#include "EngineCore/EngineTypeSystem/TypeKind.hpp"
+#include "EngineCore/EngineTypeSystem/TypeInfo.hpp"
 
 using namespace StateEngine::EngineCore::EntityComponentSystem;
 using namespace StateEngine::EngineCore::EngineTypeSystem;
@@ -29,30 +29,30 @@ void ZArchetypeComponentRegistry::DestroyEntity(EcsEntity entity) {
 }
 
 void ZArchetypeComponentRegistry::AddComponentToEntity(EcsEntity entity, size_t componentNameHash, const void* data) {
-	const TypeInfo* componentType = TypeRegistry_GetTypeInfo(componentNameHash);
+    const TypeInfo* componentType = nullptr;  // TypeRegistry_GetTypeInfo(componentNameHash);
 	if (!componentType) {
 		ZLOG_ERROR("ArchetypeEcs") << "TypeInfo not found for component with hash code: " << componentNameHash;
 		assert(false && "TypeInfo not found for component");
 		return;
 	}
 	if (componentType->kind != TypeKind::Struct) {
-		ZLOG_ERROR("ArchetypeEcs") << "Non structure member " << componentType->name.c_str() << " cannot be ECS component";
+		ZLOG_ERROR("ArchetypeEcs") << "Non structure member " << componentType->Name.c_str() << " cannot be ECS component";
 		assert(false && "Component is not structure");
 		return;
 	}
 
 	auto& allocator = dataCopyAllocators_[writeIndex.load(std::memory_order_relaxed)];
-	void* storedData = allocator.allocate(componentType->size, componentType->alignment);
-	if (componentType->copyConstructor)
-		componentType->copyConstructor(storedData, data);
+	void* storedData = allocator.allocate(componentType->Size, componentType->Alignment);
+	if (componentType->CopyConstructor)
+		componentType->CopyConstructor(storedData, data);
 	else
-		memcpy(storedData, data, componentType->size);
+		memcpy(storedData, data, componentType->Size);
 	
 	UpdateCommand cmd{
 		 .type = UpdateCommand::CommandType::AddComponent,
 		 .entity = entity,
 		 .componentHash = componentNameHash,
-		 .dataSize = componentType->size,
+		 .dataSize = componentType->Size,
 		 .dataPtr = storedData
 	};
 	commandsQueue_->enqueue(cmd);
@@ -166,7 +166,7 @@ void ZArchetypeComponentRegistry::FlushUpdateCommands() {
 ZArchetypePool& ZArchetypeComponentRegistry::GetOrCreatePool(const ZFixedBuffer<size_t, 32>& componentHashes) {
 	size_t newHash = 0;
 	for (auto& hash : componentHashes) {
-		newHash = Fnv1aHashProvider::combineHash(newHash, hash);
+		newHash = Fnv1aHashProvider::CombineHash(newHash, hash);
 	}
 
 	if (archetypePools_.contains(newHash))
@@ -198,18 +198,18 @@ void ZArchetypeComponentRegistry::MoveEntity(EcsEntity entity, ZArchetypePool* o
 
 
 	for (auto& meta : newMetaList) {
-		size_t compHash = meta.typeInfo->hashCode;
+		size_t compHash = meta.typeInfo->HashCode;
 		void* dstData = newPool->GetComponentData(newAlloc.chunk, newAlloc.index, compHash);
 		void* srcData = oldPool->GetComponentData(oldRecord.chunk, oldRecord.rowIndex, compHash);
 
 		void* copySrcData = srcData ? srcData : newComponentData;
-		if (meta.typeInfo->moveConstructor)
-			meta.typeInfo->moveConstructor(dstData, copySrcData);
+		if (meta.typeInfo->MoveConstructor)
+			meta.typeInfo->MoveConstructor(dstData, copySrcData);
 		else
-			memcpy(dstData, copySrcData, meta.typeInfo->size);
+			memcpy(dstData, copySrcData, meta.typeInfo->Size);
 
-		if (meta.typeInfo->destructor)
-			meta.typeInfo->destructor(copySrcData);
+		if (meta.typeInfo->Destructor)
+			meta.typeInfo->Destructor(copySrcData);
 	}
 }
 
@@ -218,7 +218,7 @@ void ZArchetypeComponentRegistry::ForEachComponent(const ForeachCallbackFunction
 	std::sort(requiredComponentsCopy.begin(), requiredComponentsCopy.end());
 	size_t queryHash = 0;
 	for (auto& hash : requiredComponentsCopy) {
-		queryHash = Fnv1aHashProvider::combineHash(queryHash, hash);
+		queryHash = Fnv1aHashProvider::CombineHash(queryHash, hash);
 	}
 
 	if (!cachedQueries.contains(queryHash)) {

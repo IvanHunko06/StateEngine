@@ -16,12 +16,12 @@ ZArchetypePool::ZArchetypePool(const ZFixedBuffer <size_t, 32>& components) {
     }
 	if (components.size() > 0) {
 		for (size_t i = 0; i < components.size(); ++i) {
-            const TypeInfo* typeInfo = TypeRegistry_GetTypeInfo(components[i]);
-			archetypeKey = Fnv1aHashProvider::combineHash(archetypeKey, components[i]);
+            const TypeInfo* typeInfo                = nullptr;  // TypeRegistry_GetTypeInfo(components[i]);
+			archetypeKey = Fnv1aHashProvider::CombineHash(archetypeKey, components[i]);
             componentHashToIndexMap_[components[i]] = i;
 			ComponentMetadata metadata{
-				.size = typeInfo->size,
-				.alignment = typeInfo->alignment,
+				.size = typeInfo->Size,
+				.alignment = typeInfo->Alignment,
 				.typeInfo = typeInfo
 			};
 			components_.push_back(metadata);
@@ -78,14 +78,14 @@ EcsEntity ZArchetypePool::DestroyEntity(ArchetypeChunk* chunk, uint32_t index) {
 
             uint8_t* dst = componentArrayStart + (index * meta.size);
             uint8_t* src = componentArrayStart + (lastIndex * meta.size);
-            if (meta.typeInfo->moveConstructor)
-                meta.typeInfo->moveConstructor(dst, src);
+            if (meta.typeInfo->MoveConstructor)
+                meta.typeInfo->MoveConstructor(dst, src);
             else
                 memcpy(dst, src, meta.size);
 
-            if (meta.typeInfo->destructor) {
+            if (meta.typeInfo->Destructor) {
                 uint8_t* toDestroy = componentArrayStart + (lastIndex * meta.size);
-                meta.typeInfo->destructor(toDestroy);
+                meta.typeInfo->Destructor(toDestroy);
             }
         }
     }
