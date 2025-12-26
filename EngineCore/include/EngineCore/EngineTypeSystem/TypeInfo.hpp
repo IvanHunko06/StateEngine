@@ -1,6 +1,7 @@
 #pragma once
 #include "EngineCore/DataStructures/ZBuffer.hpp"
 #include "EngineCore/DataStructures/ZString.hpp"
+#include "EngineCore/DataStructures/ZFunction.hpp"
 #include "EnumMember.hpp"
 #include "FieldInfo.hpp"
 #include <cstdint>
@@ -21,7 +22,7 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         uint32_t Alignment {1};
         TypeKind kind {TypeKind::Primitive};
 
-        using ToStringFunction = DataStructures::ZString (*)(const void* data, const char* format);
+        using ToStringFunction = DataStructures::ZFunction<DataStructures::ZString(const void* data, const char* format)>;
         ToStringFunction ToString {};
 
         using MoveConstructorFunction = void (*)(void* dstMemory, void* src);

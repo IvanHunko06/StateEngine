@@ -5,6 +5,7 @@
 #include "TypeRegistryExports.hpp"
 #include <cassert>
 #include <type_traits>
+#include <string>
 
 namespace StateEngine::EngineCore::EngineTypeSystem {
     template <typename T>
@@ -12,6 +13,42 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         requires { !std::is_reference_v<T> && !std::is_pointer_v<T> && !std::is_const_v<T>; };
 
     class TypeRegistry {
+      private:
+        static DataStructures::ZString ToStringStructImpl(TypeKey hashCode, const void* data, const char* format)
+        {
+            const TypeInfo* type = TryGetType(hashCode);
+            if (type == nullptr) {
+                return "Unknown";
+            }
+
+            std::string buffer;
+            buffer.reserve(256);
+
+            buffer += "{";
+            bool isFirstField = true;
+
+            for (auto& field : type->Fields) {
+                if (!isFirstField) {
+                    buffer += ", ";
+                }
+                isFirstField = false;
+                buffer += field.Name.c_str();
+                buffer += ": ";
+
+                const void* fieldDataPtr = static_cast<const char*>(data) + field.Offset;
+                const TypeInfo* fieldTypeInfo = field.Type;
+                if (fieldTypeInfo && fieldTypeInfo->ToString) {
+                    DataStructures::ZString val = fieldTypeInfo->ToString(fieldDataPtr, format);
+                    buffer += val.c_str();
+                }
+                else {
+                    buffer += "?"; 
+                }
+            }
+            buffer += "}";
+            return buffer.c_str();
+        }
+
       public:
         template <size_t N, size_t M>
         static void RegisterType(const CompileTimeTypeMeta<N, M>& meta, TypeKind kind)
@@ -26,7 +63,15 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
             info.CopyConstructor = meta.CopyConstructor;
             info.MoveConstructor = meta.MoveConstructor;
             info.Destructor      = meta.Destructor;
-            info.ToString        = meta.ToString;
+            if (kind == TypeKind::Struct) {
+                info.ToString = [typeHash = meta.TypeHash](const void* data,
+                                                           const char* format) -> DataStructures::ZString {
+                    return ToStringStructImpl(typeHash, data, format);
+                };
+            }
+            else {
+                info.ToString = meta.ToString;
+            }
 
             for (int i = 0; i < meta.FieldCount; ++i) {
                 const auto& field = meta.Fields[i];

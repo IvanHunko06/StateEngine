@@ -59,6 +59,9 @@ namespace StateEngine::EngineCore::EngineTypeSystem {
         template <int32_t Val>
         using EnumValue = AddRaw<Val>;
 
+        template <int32_t... NewVals>
+        using EnumValues = CompileTimeTypeBuilder<TType, Items..., static_cast<TType>(NewVals)...>;
+
         template <int32_t Min = -64, int32_t Max = 64>
         using AutoEnum = typename EnumRangeScanner<CompileTimeTypeBuilder<TType, Items...>, Min, Max>::type;
 
