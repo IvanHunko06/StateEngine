@@ -72,6 +72,8 @@ void ZTypeRegistry::RegisterBaseTypes()
 
     TypeRegistry::RegisterType(CompileTimeTypeBuilder<float>::Build(), TypeKind::Primitive);
     TypeRegistry::RegisterType(CompileTimeTypeBuilder<double>::Build(), TypeKind::Primitive);
+
+    TypeRegistry::RegisterType(CompileTimeTypeBuilder<DataStructures::ZString>::Build(), TypeKind::Class);
 }
 
 void ZTypeRegistry::UnregisterBaseTypes() {
@@ -93,6 +95,8 @@ void ZTypeRegistry::UnregisterBaseTypes() {
 
     TypeRegistry::UnregisterType<float>();
     TypeRegistry::UnregisterType<double>();
+
+    TypeRegistry::UnregisterType<DataStructures::ZString>();
 }
 
 void ZTypeRegistry::ÑheckAllTypesRelease() {

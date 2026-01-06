@@ -1,5 +1,5 @@
 #include "ZEventBus.hpp"
-#include "EngineCore/BaseEngineEvents/ShutdownEngineEvent.hpp"
+#include "EngineCore/BaseEngineEvents/AllBaseEvents.hpp"
 #include "EngineCore/DataStructures/ZBuffer.hpp"
 #include "EngineCore/EngineTypeSystem/CompileTimeTypeBuilder.hpp"
 #include "EngineCore/EngineTypeSystem/TypeInfo.hpp"
@@ -77,9 +77,33 @@ void ZEventBus::RegisterBaseEventsTypes()
 {
     auto shutdownEngineEventType = CompileTimeTypeBuilder<ShutdownEngineEvent>::Build();
     TypeRegistry::RegisterType(shutdownEngineEventType, TypeKind::Struct);
+
+    auto loadSceneEventType =
+        CompileTimeTypeBuilder<LoadSceneEvent>::Field<&LoadSceneEvent::sceneName>::Field<&LoadSceneEvent::loadAsync>::
+            Build();
+    TypeRegistry::RegisterType(loadSceneEventType, TypeKind::Struct);
+
+    auto unloadSceneEventType = CompileTimeTypeBuilder<UnloadSceneEvent>::Field<&UnloadSceneEvent::sceneName>::Build();
+    TypeRegistry::RegisterType(unloadSceneEventType, TypeKind::Struct);
+
+    auto activateSceneEventType =
+        CompileTimeTypeBuilder<ActivateSceneEvent>::Field<&ActivateSceneEvent::sceneName>::Field<
+            &ActivateSceneEvent::updateOrder>::Field<&ActivateSceneEvent::renderOrder>
+            ::Build();
+    TypeRegistry::RegisterType(activateSceneEventType, TypeKind::Struct);
+
+    auto deactivateSceneEventType =
+        CompileTimeTypeBuilder<DeactivateSceneEvent>::Field<&DeactivateSceneEvent::sceneName>::Build();
+    TypeRegistry::RegisterType(deactivateSceneEventType, TypeKind::Struct);
 }
-void ZEventBus::UnregisterBaseEventsTypes() {
+void ZEventBus::UnregisterBaseEventsTypes()
+{
     TypeRegistry::UnregisterType<ShutdownEngineEvent>();
+
+    TypeRegistry::UnregisterType<LoadSceneEvent>();
+    TypeRegistry::UnregisterType<UnloadSceneEvent>();
+    TypeRegistry::UnregisterType<ActivateSceneEvent>();
+    TypeRegistry::UnregisterType<DeactivateSceneEvent>();
 }
 
 void ZEventBus::FlushEvents()
