@@ -10,11 +10,11 @@ using StateEngine::EngineCore::DataStructures::ZString;
 using StateEngine::DesktopPlatformModule::DesktopPlatformModule;
 SDL_Window* safelyGetWindow() {
 	constexpr auto kWindowWaitTimeout = std::chrono::seconds(5);
-	DesktopPlatformModule& instance = DesktopPlatformModule::getInstance();
+	DesktopPlatformModule& instance = DesktopPlatformModule::GetInstance();
 	SDL_Window* sdlWindow = nullptr;
 	auto startTime = std::chrono::steady_clock::now();
 	while (!sdlWindow) {
-		sdlWindow = instance.getGameWindow().getSdlWindow();
+		sdlWindow = instance.GetGameWindow().GetSdlWindow();
 		auto elapsedTime = std::chrono::steady_clock::now() - startTime;
 		if (elapsedTime > kWindowWaitTimeout) {
 			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Timed out waiting for SDL window!");

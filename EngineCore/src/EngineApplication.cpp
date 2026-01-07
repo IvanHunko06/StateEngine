@@ -75,7 +75,6 @@ void EngineApplication::Run(IApplication* app) {
 
 	for (auto& loadedModule : LoadedModules) {
 		loadedModule.instance->OnLoad();
-		applyConfigurations(loadedModule.instance, config);
 		ZLOG_DEBUG("EngineCore") << "module loaded: " << loadedModule.instance->GetName();
 	}
 	ZLogger::FlushMessages();
@@ -162,12 +161,6 @@ IModule* EngineApplication::loadModule(const ZString& path) {
 	return context.instance;
 }
 
-void EngineApplication::applyConfigurations(IModule* module, const EngineConfiguration& configuration) {
-	if (IWindowConfigurationConsumer* windowConsumer = dynamic_cast<IWindowConfigurationConsumer*>(module)) {
-		ZLOG_DEBUG("EngineCore") << "applying window configuration to module: " << module->GetName();
-		windowConsumer->configureWindow(configuration.windowSettings);
-	}
-}
 
 void EngineApplication::RegisterEngineSystem(EngineUpdatePhase phase, IEngineSystem* system) {
 	switch (phase)

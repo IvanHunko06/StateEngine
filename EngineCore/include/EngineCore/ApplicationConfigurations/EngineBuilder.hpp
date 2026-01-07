@@ -7,10 +7,6 @@ using StateEngine::EngineCore::DataStructures::ZString;
 namespace StateEngine::EngineCore::ApplicationConfigurations {
 	class EngineBuilder {
 	public:
-		EngineBuilder& WithWindowSettings(const WindowSettings& settings) {
-			configuration_.windowSettings = settings;
-			return *this;
-		}
 		EngineBuilder& AddModule(const ZString& path) {
 			configuration_.modulesToLoad.push_back(path);
 			return *this;
