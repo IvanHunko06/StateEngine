@@ -3,5 +3,6 @@
 
 using StateEngine::EngineCore::DataStructures::ZFunction;
 namespace StateEngine::EngineCore::EntityComponentSystem {
-	using ForeachCallbackFunction = ZFunction<void(void** components, size_t entitiesCount)>;
+    struct EcsEntity;
+	using ForeachCallbackFunction = ZFunction<void(const EcsEntity* entities, void** components, size_t entitiesCount)>;
 }

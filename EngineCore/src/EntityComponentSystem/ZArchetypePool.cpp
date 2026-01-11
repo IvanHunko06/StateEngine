@@ -1,28 +1,28 @@
 #include "ZArchetypePool.hpp"
 #include "EngineCore/Hashing/Fnv1aHashProvider.hpp"
-#include "EngineCore/EngineTypeSystem/TypeRegistryExports.hpp"
+#include "EngineCore/EngineTypeSystem/TypeRegistry.hpp"
 #include "EngineCore/MemoryManagment/MemoryAllocatorExports.hpp"
-#include "EngineCore/Logging/LoggingMacros.hpp"
-#include <algorithm>
+#include <cstring>
+#include <cstdint>
 
 
 using namespace StateEngine::EngineCore::EntityComponentSystem;
+using namespace StateEngine::EngineCore::EngineTypeSystem;
 using StateEngine::EngineCore::Hashing::Fnv1aHashProvider;
-using StateEngine::EngineCore::EngineTypeSystem::TypeKind;
 
 ZArchetypePool::ZArchetypePool(const ZFixedBuffer <size_t, 32>& components) {
-    for (auto& component : componentNamesHashCodes_) {
+    for (const auto& component : components) {
         componentNamesHashCodes_.insert(component);
     }
 	if (components.size() > 0) {
 		for (size_t i = 0; i < components.size(); ++i) {
-            const TypeInfo* typeInfo                = nullptr;  // TypeRegistry_GetTypeInfo(components[i]);
+            const TypeInfo& typeInfo                = TypeRegistry::GetRequiredType(components[i]);
 			archetypeKey = Fnv1aHashProvider::CombineHash(archetypeKey, components[i]);
             componentHashToIndexMap_[components[i]] = i;
 			ComponentMetadata metadata{
-				.size = typeInfo->Size,
-				.alignment = typeInfo->Alignment,
-				.typeInfo = typeInfo
+				.size = typeInfo.Size,
+				.alignment = typeInfo.Alignment,
+				.typeInfo = &typeInfo
 			};
 			components_.push_back(metadata);
 		}
@@ -48,22 +48,22 @@ ZArchetypePool::AllocResult ZArchetypePool::AllocateEntity(EcsEntity entityID) {
         chunk = headChunk_;
     }
 
-    uint32_t index = chunk->count;
+    const uint32_t index = chunk->count;
 
     // Записываем EntityID в скрытый массив (это важно для Destroy!)
     // Вычисляем адрес: Base + Offset_IDs + (Index * sizeof(EcsEntity))
-    uint8_t* buffer = reinterpret_cast<uint8_t*>(chunk);
-    EcsEntity* ids = reinterpret_cast<EcsEntity*>(buffer + entityIdsOffset_);
+    auto* buffer = reinterpret_cast<uint8_t*>(chunk);
+    auto* ids = reinterpret_cast<EcsEntity*>(buffer + entityIdsOffset_);
     ids[index] = entityID;
 
     chunk->count++;
 
-    return { chunk, index };
+    return {.chunk = chunk, .index = index};
 }
 EcsEntity ZArchetypePool::DestroyEntity(ArchetypeChunk* chunk, uint32_t index) {
-    uint32_t lastIndex = chunk->count - 1;
-    uint8_t* buffer = reinterpret_cast<uint8_t*>(chunk);
-    EcsEntity* ids = reinterpret_cast<EcsEntity*>(buffer + entityIdsOffset_);
+    const uint32_t lastIndex = chunk->count - 1;
+    auto* buffer = reinterpret_cast<uint8_t*>(chunk);
+    auto* ids = reinterpret_cast<EcsEntity*>(buffer + entityIdsOffset_);
 
     EcsEntity movedEntityId = ids[lastIndex]; // ID сущности, которую мы будем двигать
 
@@ -78,16 +78,21 @@ EcsEntity ZArchetypePool::DestroyEntity(ArchetypeChunk* chunk, uint32_t index) {
 
             uint8_t* dst = componentArrayStart + (index * meta.size);
             uint8_t* src = componentArrayStart + (lastIndex * meta.size);
-            if (meta.typeInfo->MoveConstructor)
+            if (meta.typeInfo->MoveConstructor != nullptr) {
                 meta.typeInfo->MoveConstructor(dst, src);
-            else
-                memcpy(dst, src, meta.size);
+            }
+            else {
+                std::memcpy(dst, src, meta.size);
+            }
+                
 
-            if (meta.typeInfo->Destructor) {
-                uint8_t* toDestroy = componentArrayStart + (lastIndex * meta.size);
-                meta.typeInfo->Destructor(toDestroy);
+            if (meta.typeInfo->Destructor != nullptr) {
+                meta.typeInfo->Destructor(src);
+                std::memset(src, 0, meta.size);
             }
         }
+
+        ids[lastIndex] = EcsEntity {.generationId = 0, .entityId = 0};  // Очистка на всякий случай
     }
     chunk->count--;
 
@@ -95,21 +100,10 @@ EcsEntity ZArchetypePool::DestroyEntity(ArchetypeChunk* chunk, uint32_t index) {
     // чтобы Registry мог обновить индекс.
     return movedEntityId;
 }
-void* ZArchetypePool::GetComponentData(ArchetypeChunk* chunk, uint32_t index, size_t componentHash) {
-    if (!componentHashToIndexMap_.contains(componentHash))return nullptr;
-
-    size_t componentIndex = componentHashToIndexMap_[componentHash];
-    const ComponentMetadata& meta = components_[componentIndex];
-
-    auto* buffer = reinterpret_cast<uint8_t*>(chunk);
-
-    return buffer + meta.chunkOffset + (index * meta.size);
-}
 ZArchetypePool::ArchetypeChunk* ZArchetypePool::AllocateChunk() {
-    // Выделяем сырую память
     void* mem = MemoryAllocator_Calloc(1, chunkSize_, 64);
 
-    ArchetypeChunk* chunk = new (mem) ArchetypeChunk(); // Placement new заголовка
+    ArchetypeChunk* chunk = new (mem) ArchetypeChunk();
     chunk->count = 0;
     chunk->next = nullptr;
     chunk->index = chunksCount++;
@@ -125,7 +119,7 @@ void ZArchetypePool::CalculateLayout() {
     }
 
     // 2. Первичное приближение Capacity (сколько в теории влезает)
-    size_t availableSpace = chunkSize_ - sizeof(ArchetypeChunk);
+    const size_t availableSpace = chunkSize_ - sizeof(ArchetypeChunk);
     chunkCapacity_ = availableSpace / bytesPerEntity;
 
     // 3. Уточняем Capacity с учетом выравнивания (Alignment Padding waste)
@@ -155,9 +149,7 @@ void ZArchetypePool::CalculateLayout() {
         if (fits) {
             break; // Отлично, текущий capacity влезает
         }
-        else {
-            chunkCapacity_--; // Уменьшаем и пробуем пересчитать оффсеты
-        }
+        chunkCapacity_--; // Уменьшаем и пробуем пересчитать оффсеты
     }
 }
 
